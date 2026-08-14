@@ -1,14 +1,30 @@
-import React, { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { registerFace, loginFace, setAuthToken } from '../api/index';
 
-export default function FaceAuth() {
+export default function FaceAuth({ onAuth }: { onAuth?: (user: any) => void }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [streaming, setStreaming] = useState(false);
   const [captured, setCaptured] = useState<string | null>(null);
   const [role, setRole] = useState('operator');
   const navigate = useNavigate();
+
+  const persistAuth = (user: any, token: string) => {
+    setAuthToken(token);
+    localStorage.setItem('jwt', token);
+    localStorage.setItem('user', JSON.stringify(user));
+    if (onAuth) {
+      onAuth(user);
+    }
+
+    const dashboardMap: Record<string, string> = {
+      operator: '/overview',
+      manager: '/overview',
+      admin: '/overview',
+    };
+    navigate(dashboardMap[user?.role || role] || '/overview');
+  };
 
   const startCamera = async () => {
     try {
@@ -62,11 +78,8 @@ export default function FaceAuth() {
     try {
       const res = await registerFace(form);
       if (res && res.token) {
-        setAuthToken(res.token);
-        localStorage.setItem('jwt', res.token);
-        localStorage.setItem('user', JSON.stringify(res.user));
+        persistAuth(res.user, res.token);
         alert('Registered and logged in: ' + res.user.name);
-        navigate('/');
       } else {
         alert('Registered but no token returned: ' + JSON.stringify(res));
       }
@@ -83,11 +96,8 @@ export default function FaceAuth() {
     try {
       const res = await loginFace(form);
       if (res && res.token) {
-        setAuthToken(res.token);
-        localStorage.setItem('jwt', res.token);
-        localStorage.setItem('user', JSON.stringify(res.user));
+        persistAuth(res.user, res.token);
         alert('Logged in: ' + res.user.name);
-        navigate('/');
       } else if (res && res.error) {
         alert('Login error: ' + res.error);
       } else {

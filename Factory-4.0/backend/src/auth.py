@@ -171,7 +171,7 @@ def find_user_by_image(image_bytes: bytes) -> Optional[dict]:
 
 def create_jwt(user_id: int, role: str, name: str):
     exp = datetime.utcnow() + timedelta(minutes=JWT_EXP_MINUTES)
-    payload = {"sub": user_id, "role": role, "name": name, "exp": exp}
+    payload = {"sub": str(user_id), "role": role, "name": name, "exp": exp}
     token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGO)
     return token
 

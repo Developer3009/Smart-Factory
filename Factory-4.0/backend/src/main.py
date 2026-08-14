@@ -80,23 +80,56 @@ def ensure_schema():
         cols = [r['column_name'] if isinstance(r, dict) else r[0] for r in cur.fetchall()]
         if 'face_hash' not in cols:
             cur.execute("ALTER TABLE users ADD COLUMN face_hash TEXT")
+        if 'face_embedding' not in cols:
+            cur.execute("ALTER TABLE users ADD COLUMN face_embedding TEXT")
         if 'face_registered_at' not in cols:
             cur.execute("ALTER TABLE users ADD COLUMN face_registered_at TIMESTAMP")
         if 'last_seen' not in cols:
             cur.execute("ALTER TABLE users ADD COLUMN last_seen TIMESTAMP")
+        if 'employee_id' not in cols:
+            cur.execute("ALTER TABLE users ADD COLUMN employee_id TEXT")
+        if 'created_by' not in cols:
+            cur.execute("ALTER TABLE users ADD COLUMN created_by INTEGER")
+        if 'status' not in cols:
+            cur.execute("ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'active'")
     else:
         cur.execute("PRAGMA table_info(users)")
         columns = [col[1] for col in cur.fetchall()]
         if 'face_hash' not in columns:
             cur.execute("ALTER TABLE users ADD COLUMN face_hash TEXT")
+        if 'face_embedding' not in columns:
+            cur.execute("ALTER TABLE users ADD COLUMN face_embedding TEXT")
         if 'face_registered_at' not in columns:
             cur.execute("ALTER TABLE users ADD COLUMN face_registered_at TEXT")
         if 'last_seen' not in columns:
             cur.execute("ALTER TABLE users ADD COLUMN last_seen TEXT")
+        if 'employee_id' not in columns:
+            cur.execute("ALTER TABLE users ADD COLUMN employee_id TEXT")
+        if 'created_by' not in columns:
+            cur.execute("ALTER TABLE users ADD COLUMN created_by INTEGER")
+        if 'status' not in columns:
+            cur.execute("ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'active'")
+
+    # login history table
+    if is_postgres():
+        cur.execute("SELECT table_name FROM information_schema.tables WHERE table_name = 'login_history'")
+        if cur.fetchone() is None:
+            cur.execute("CREATE TABLE login_history (history_id SERIAL PRIMARY KEY, user_id INTEGER, name TEXT, role TEXT, login_at TIMESTAMP, source TEXT)")
+    else:
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='login_history'")
+        if cur.fetchone() is None:
+            cur.execute("CREATE TABLE login_history (history_id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, name TEXT, role TEXT, login_at TEXT, source TEXT)")
 
     conn.commit()
     cur.close()
     conn.close()
+
+
+def record_login_history(user_id: int, name: str, role: str, source: str = 'face-login'):
+    conn = get_db_connection(); cur = conn.cursor()
+    cur.execute("INSERT INTO login_history (user_id, name, role, login_at, source) VALUES (?, ?, ?, ?, ?)",
+                (user_id, name, role, datetime.now().isoformat(), source))
+    conn.commit(); cur.close(); conn.close()
 
 
 def create_alert(message: str, severity: str = "warning"):
@@ -121,24 +154,45 @@ from fastapi import File, UploadFile, Form
 
 # Face / Auth endpoints (prototype)
 @app.post('/api/auth/register-face')
-async def api_register_face(name: str = Form(...), role: str = Form(...), file: UploadFile = File(...)):
+async def api_register_face(request: Request, name: str = Form(...), role: str = Form(...), file: UploadFile = File(...), created_by: str | None = Form(None)):
     """Register a user with a face image (multipart/form-data: name, role, file)
     Returns JWT token and user info so the client can auto-login and show the dashboard.
     Prototype only — secure and production hardening required.
     """
     if not file:
         raise HTTPException(status_code=400, detail='image file required')
+    role = role.lower()
+    if role not in ('operator', 'manager', 'admin'):
+        raise HTTPException(status_code=400, detail='Unsupported role selected')
+
+    token_header = request.headers.get('authorization')
+    actor = None
+    if token_header:
+        try:
+            actor = verify_jwt(token_header.replace('Bearer ', '').strip())
+        except Exception:
+            actor = None
+    if actor:
+        actor_role = str(actor.get('role','')).lower()
+        if role == 'admin' and actor_role != 'admin':
+            raise HTTPException(status_code=403, detail='Only admins can register admin accounts')
+        if role == 'manager' and actor_role == 'operator':
+            raise HTTPException(status_code=403, detail='Operators cannot register managers without approval')
+    elif role in ('operator', 'manager'):
+        # Demo-friendly: allow local first-time registration when no valid token is provided.
+        pass
+
     data = await file.read()
     res = register_face(name, role, data)
-    # If registration succeeded, create a JWT and return the token + user info to auto-login the client
     try:
         user_id = int(res.get('user_id')) if isinstance(res, dict) and res.get('user_id') is not None else None
     except Exception:
         user_id = None
     if user_id:
         token = create_jwt(user_id=user_id, role=role, name=name)
-        # update last_seen
-        conn = get_db_connection(); cur = conn.cursor(); cur.execute("UPDATE users SET last_seen = ? WHERE user_id = ?", (datetime.now().isoformat(), user_id)); conn.commit(); cur.close(); conn.close()
+        now = datetime.now().isoformat()
+        conn = get_db_connection(); cur = conn.cursor(); cur.execute("UPDATE users SET last_seen = ?, status = 'active' WHERE user_id = ?", (now, user_id)); conn.commit(); cur.close(); conn.close()
+        record_login_history(user_id, name, role, 'face-registration')
         user_out = {'user_id': user_id, 'name': name, 'role': role, 'dist': None}
         return {"token": token, "user": user_out, "status": "registered"}
     return res
@@ -156,7 +210,9 @@ async def api_login_face(file: UploadFile = File(...)):
             raise HTTPException(status_code=401, detail='No matching face found')
         token = create_jwt(user_id=int(user['user_id']), role=str(user.get('role','operator')), name=str(user.get('name','User')))
         # update last seen
-        conn = get_db_connection(); cur = conn.cursor(); cur.execute("UPDATE users SET last_seen = ? WHERE user_id = ?", (datetime.now().isoformat(), int(user['user_id']))); conn.commit(); cur.close(); conn.close()
+        now = datetime.now().isoformat()
+        conn = get_db_connection(); cur = conn.cursor(); cur.execute("UPDATE users SET last_seen = ? WHERE user_id = ?", (now, int(user['user_id']))); conn.commit(); cur.close(); conn.close()
+        record_login_history(int(user['user_id']), str(user.get('name','User')), str(user.get('role','operator')), 'face-login')
         # normalize user dict to JSON-serializable types
         user_out = {
             'user_id': int(user.get('user_id')),
@@ -193,6 +249,97 @@ def require_role(role: str):
 @app.get('/api/auth/me')
 def me(user=Depends(get_current_user)):
     return user
+
+@app.get('/api/users')
+def list_users(user=Depends(get_current_user)):
+    if user.get('role') not in ('manager', 'admin'):
+        raise HTTPException(status_code=403, detail='Only managers/admins can view employee records')
+    conn = get_db_connection(); conn.row_factory = dict_factory; cur = conn.cursor()
+    cur.execute("SELECT user_id, name, role, email, employee_id, created_by, status, face_registered_at, last_seen FROM users ORDER BY user_id DESC")
+    rows = cur.fetchall(); cur.close(); conn.close(); return rows
+
+class EmployeeCreate(BaseModel):
+    name: str
+    role: str
+    employee_id: str | None = None
+    status: str = 'active'
+
+@app.post('/api/users')
+async def create_user(
+    request: Request,
+    name: str | None = Form(None),
+    role: str | None = Form(None),
+    employee_id: str | None = Form(None),
+    status: str = Form('active'),
+    file: UploadFile | None = File(None),
+    user=Depends(get_current_user),
+):
+    content_type = request.headers.get('content-type', '').lower()
+    if 'application/json' in content_type:
+        payload = await request.json()
+        name = payload.get('name')
+        role = payload.get('role')
+        employee_id = payload.get('employee_id')
+        status = payload.get('status', 'active')
+        file = None
+
+    if not name or not role:
+        raise HTTPException(status_code=400, detail='Employee name and role are required')
+
+    actor_role = user.get('role')
+    if actor_role not in ('manager', 'admin'):
+        raise HTTPException(status_code=403, detail='Only managers/admins can create employees')
+    if role not in ('operator', 'manager', 'admin'):
+        raise HTTPException(status_code=400, detail='Unsupported role')
+    if role == 'admin' and actor_role != 'admin':
+        raise HTTPException(status_code=403, detail='Only admin can create admin accounts')
+    if role == 'manager' and actor_role == 'operator':
+        raise HTTPException(status_code=403, detail='Operators cannot create managers')
+
+    face_registered = False
+    user_id = None
+    if file and file.filename:
+        data = await file.read()
+        if not data:
+            raise HTTPException(status_code=400, detail='Face image required')
+        res = register_face(name, role, data)
+        user_id = int(res.get('user_id')) if isinstance(res, dict) and res.get('user_id') is not None else None
+        face_registered = True
+
+    if user_id is None:
+        conn = get_db_connection(); cur = conn.cursor();
+        cur.execute("INSERT INTO users (name, role, email, password_hash, employee_id, status, created_by, face_registered_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    (name, role, None, None, employee_id, status, int(user['sub']), datetime.now().isoformat()))
+        user_id = getattr(cur, 'lastrowid', None); conn.commit(); cur.close(); conn.close()
+
+    if user_id is not None:
+        conn = get_db_connection(); cur = conn.cursor();
+        cur.execute("UPDATE users SET employee_id = ?, status = ?, created_by = ?, face_registered_at = COALESCE(face_registered_at, ?) WHERE user_id = ?",
+                    (employee_id or None, status, int(user['sub']), datetime.now().isoformat(), user_id))
+        conn.commit(); cur.close(); conn.close()
+
+    return {'user_id': user_id, 'name': name, 'role': role, 'status': status, 'face_registered': face_registered}
+
+@app.delete('/api/users/{user_id}')
+def delete_user(user_id: int, user=Depends(get_current_user)):
+    if user.get('role') not in ('manager', 'admin'):
+        raise HTTPException(status_code=403, detail='Only managers/admins can delete employees')
+    conn = get_db_connection(); cur = conn.cursor();
+    cur.execute("DELETE FROM users WHERE user_id = ?", (user_id,));
+    conn.commit(); cur.close(); conn.close();
+    return {'deleted': True, 'user_id': user_id}
+
+@app.get('/api/login-history')
+def login_history(user=Depends(get_current_user)):
+    if user.get('role') not in ('manager', 'admin'):
+        raise HTTPException(status_code=403, detail='Only managers/admins can view login history')
+    conn = get_db_connection(); conn.row_factory = dict_factory; cur = conn.cursor();
+    cur.execute("SELECT user_id, name, role, login_at as last_seen, source FROM login_history ORDER BY login_at DESC LIMIT 50")
+    rows = cur.fetchall()
+    if not rows:
+        cur.execute("SELECT user_id, name, role, last_seen FROM users WHERE last_seen IS NOT NULL ORDER BY last_seen DESC LIMIT 50")
+        rows = cur.fetchall()
+    cur.close(); conn.close(); return rows
 
 @app.post("/api/simulator/stop")
 def stop_simulator():

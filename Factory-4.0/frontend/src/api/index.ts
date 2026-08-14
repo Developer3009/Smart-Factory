@@ -15,6 +15,15 @@ export function setAuthToken(token?: string) {
 
 export const registerFace = (formData: FormData) => api.post('/auth/register-face', formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then(res => res.data);
 export const loginFace = (formData: FormData) => api.post('/auth/login-face', formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then(res => res.data);
+export const getUsers = () => api.get('/users').then(res => res.data);
+export const createUser = (payload: { name: string; role: string; employee_id?: string; status?: string } | FormData) => {
+  if (payload instanceof FormData) {
+    return api.post('/users', payload, { headers: { 'Content-Type': 'multipart/form-data' } }).then(res => res.data);
+  }
+  return api.post('/users', payload).then(res => res.data);
+};
+export const deleteUser = (userId: number) => api.delete(`/users/${userId}`).then(res => res.data);
+export const getLoginHistory = () => api.get('/login-history').then(res => res.data);
 
 export const getMachines = () => api.get('/machines').then(res => res.data);
 export const getMachineReadings = (id: number) => api.get(`/machines/${id}/readings`).then(res => res.data);
