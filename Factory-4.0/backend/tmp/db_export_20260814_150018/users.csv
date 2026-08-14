@@ -1,0 +1,4 @@
+user_id,name,role,email,password_hash
+1,Admin User,admin,admin@fas.com,hash123
+2,Manager User,manager,manager@fas.com,hash123
+3,Operator User,operator,operator@fas.com,hash123

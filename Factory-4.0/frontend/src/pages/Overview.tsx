@@ -1,20 +1,40 @@
 import { useEffect, useState } from 'react';
-import { getOEE, getMachines, getAlerts, toggleSimulator, getSimulatorStatus } from '../api';
-import { Activity, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
+import { getOEE, getMachines, getAlerts, toggleSimulator, getSimulatorStatus, getMaintenance } from '../api';
+import { Activity, AlertTriangle, CheckCircle2, XCircle, Wrench } from 'lucide-react';
 
 export default function Overview() {
   const [oee, setOee] = useState<any>(null);
   const [machines, setMachines] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<any[]>([]);
+  const [maintenance, setMaintenance] = useState<any[]>([]);
   const [simStatus, setSimStatus] = useState<any>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setOee(await getOEE());
-        setMachines(await getMachines());
-        setAlerts(await getAlerts());
-        setSimStatus(await getSimulatorStatus());
+        const [oeeData, machinesData, alertsData, simData, maintenanceData] = await Promise.all([
+          getOEE(),
+          getMachines(),
+          getAlerts(),
+          getSimulatorStatus(),
+          getMaintenance(),
+        ]);
+
+        setOee(oeeData);
+        setMachines(machinesData);
+        setAlerts(alertsData);
+        setMaintenance(maintenanceData);
+        setSimStatus(simData);
+
+        if (!simData?.is_running) {
+          try {
+            await toggleSimulator(true);
+            const refreshed = await getSimulatorStatus();
+            setSimStatus(refreshed);
+          } catch (error) {
+            console.error('Unable to auto-start simulator', error);
+          }
+        }
       } catch (e) {
         console.error(e);
       }
@@ -115,6 +135,25 @@ export default function Overview() {
               ))
             )}
           </div>
+        </div>
+      </div>
+
+      <div className="bg-surface rounded-xl border border-slate-700 p-6">
+        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+          <Wrench className="text-primary" /> Maintenance Schedule
+        </h2>
+        <div className="space-y-3">
+          {maintenance.length === 0 ? (
+            <div className="text-slate-400 text-sm">No scheduled maintenance.</div>
+          ) : (
+            maintenance.map(item => (
+              <div key={item.log_id} className="p-3 rounded bg-slate-800 border-l-4 border-primary">
+                <div className="text-sm font-medium">{item.machine_name}</div>
+                <div className="text-xs text-slate-300 mt-1">{item.type} • {item.service_date}</div>
+                <div className="text-sm text-slate-400 mt-1">{item.notes}</div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

@@ -8,8 +8,13 @@ export default function Machines() {
   const [readings, setReadings] = useState<any[]>([]);
 
   useEffect(() => {
-    getMachines().then(setMachines);
-  }, []);
+    getMachines().then((data) => {
+      setMachines(data);
+      if (!selectedMachine && data.length > 0) {
+        setSelectedMachine(data[0]);
+      }
+    });
+  }, [selectedMachine]);
 
   useEffect(() => {
     if (selectedMachine) {

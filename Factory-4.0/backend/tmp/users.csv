@@ -1,0 +1,8 @@
+user_id,name,role,email,password_hash,face_hash,face_registered_at,last_seen
+1,Admin User,admin,admin@fas.com,hash123,,,
+2,Manager User,manager,manager@fas.com,hash123,,,
+3,Operator User,operator,operator@fas.com,hash123,,,
+4,Test User,manager,,,e1e11e1ee1e11e1e,2026-08-14T19:17:58.629564,2026-08-14T20:36:26.944736
+5,Demo Local,manager,,,e1e11e1ee1e11e1e,2026-08-14T19:16:04.584420,
+6,DemoLocal2,manager,,,e1e11e1ee1e11e1e,2026-08-14T19:16:46.008275,
+7,WebUser,manager,,,e1e11e1ee1e11e1e,2026-08-14T20:36:24.882826,

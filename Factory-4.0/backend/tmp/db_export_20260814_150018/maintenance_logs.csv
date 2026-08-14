@@ -1,0 +1,18 @@
+log_id,machine_id,service_date,type,notes
+1,1,2026-08-06,corrective,Fixed Motor Failure
+2,1,2026-07-16,corrective,Fixed Calibration
+3,2,2026-07-17,corrective,Fixed Jammed part
+4,2,2026-07-15,corrective,Fixed Overheating
+5,3,2026-07-21,corrective,Fixed Jammed part
+6,3,2026-07-18,corrective,Fixed Overheating
+7,3,2026-08-09,corrective,Fixed Jammed part
+8,4,2026-08-05,corrective,Fixed Overheating
+9,4,2026-08-10,corrective,Fixed Motor Failure
+10,5,2026-07-19,corrective,Fixed Calibration
+11,5,2026-08-09,corrective,Fixed Jammed part
+12,5,2026-07-23,corrective,Fixed Overheating
+13,6,2026-07-20,corrective,Fixed Overheating
+14,6,2026-07-19,corrective,Fixed Overheating
+15,6,2026-07-18,corrective,Fixed Motor Failure
+16,1,2026-08-14,scheduled,AI scheduled maintenance per request: schedule maintenance for machine 1
+17,1,2026-08-14,scheduled,AI scheduled maintenance per request: schedule maintenance for machine 1
