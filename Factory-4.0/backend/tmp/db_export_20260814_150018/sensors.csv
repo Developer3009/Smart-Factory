@@ -1,0 +1,16 @@
+sensor_id,machine_id,sensor_type,unit
+1,1,temperature,C
+2,1,vibration,mm/s
+3,1,rpm,rev/min
+4,2,temperature,C
+5,2,vibration,mm/s
+6,2,rpm,rev/min
+7,3,temperature,C
+8,3,pressure,bar
+9,4,temperature,C
+10,4,vibration,mm/s
+11,4,rpm,rev/min
+12,5,temperature,C
+13,5,vibration,mm/s
+14,5,rpm,rev/min
+15,6,temperature,C

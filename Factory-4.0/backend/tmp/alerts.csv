@@ -1,0 +1,33 @@
+alert_id,prediction_id,message,severity,created_at,resolved
+1,,"Inventory critical: Control Valves is at 0 units, which is below 70% depletion threshold.",critical,2026-08-13T14:50:58.810181,0
+2,,"Inventory critical: Control Valves is at 0 units, which is below 70% depletion threshold.",critical,2026-08-13T14:50:58.831078,0
+3,,"Inventory critical: Motor Bearings is at 0 units, which is below 70% depletion threshold.",critical,2026-08-14T19:05:53.401033,0
+4,,"Inventory critical: Lubricant 500ml is at 0 units, which is below 70% depletion threshold.",critical,2026-08-14T19:05:53.429609,0
+5,,"Inventory critical: Sensor Cables is at 0 units, which is below 70% depletion threshold.",critical,2026-08-14T19:05:53.435145,0
+6,,"Inventory critical: Control Valves is at 0 units, which is below 70% depletion threshold.",critical,2026-08-14T19:05:53.438636,0
+7,,"Inventory critical: Coolant 5L is at 0 units, which is below 70% depletion threshold.",critical,2026-08-14T19:05:53.448049,0
+8,,"Inventory critical: Motor Bearings is at 0 units, which is below 70% depletion threshold.",critical,2026-08-14T19:05:53.457867,0
+9,,"Inventory critical: Lubricant 500ml is at 0 units, which is below 70% depletion threshold.",critical,2026-08-14T19:05:53.466673,0
+10,,"Inventory critical: Sensor Cables is at 0 units, which is below 70% depletion threshold.",critical,2026-08-14T19:05:53.473865,0
+11,,"Inventory critical: Control Valves is at 0 units, which is below 70% depletion threshold.",critical,2026-08-14T19:05:53.481910,0
+12,,"Inventory critical: Coolant 5L is at 0 units, which is below 70% depletion threshold.",critical,2026-08-14T19:05:53.483504,0
+13,,Reorder placed for Motor Bearings. Stock replenished to 50 units.,warning,2026-08-14T19:05:57.531886,0
+14,,"Inventory critical: Lubricant 500ml is at 0 units, which is below 70% depletion threshold.",critical,2026-08-14T19:05:57.538796,0
+15,,"Inventory critical: Sensor Cables is at 0 units, which is below 70% depletion threshold.",critical,2026-08-14T19:05:57.545521,0
+16,,"Inventory critical: Control Valves is at 0 units, which is below 70% depletion threshold.",critical,2026-08-14T19:05:57.551994,0
+17,,"Inventory critical: Coolant 5L is at 0 units, which is below 70% depletion threshold.",critical,2026-08-14T19:05:57.552788,0
+18,,"Inventory critical: Lubricant 500ml is at 0 units, which is below 70% depletion threshold.",critical,2026-08-14T19:05:58.399815,0
+19,,"Inventory critical: Sensor Cables is at 0 units, which is below 70% depletion threshold.",critical,2026-08-14T19:05:58.420783,0
+20,,"Inventory critical: Control Valves is at 0 units, which is below 70% depletion threshold.",critical,2026-08-14T19:05:58.420783,0
+21,,"Inventory critical: Coolant 5L is at 0 units, which is below 70% depletion threshold.",critical,2026-08-14T19:05:58.427859,0
+22,,Reorder placed for Lubricant 500ml. Stock replenished to 100 units.,warning,2026-08-14T19:06:01.395023,0
+23,,"Inventory critical: Sensor Cables is at 0 units, which is below 70% depletion threshold.",critical,2026-08-14T19:06:01.399675,0
+24,,"Inventory critical: Control Valves is at 0 units, which is below 70% depletion threshold.",critical,2026-08-14T19:06:01.406554,0
+25,,"Inventory critical: Coolant 5L is at 0 units, which is below 70% depletion threshold.",critical,2026-08-14T19:06:01.406554,0
+26,,Reorder placed for Control Valves. Stock replenished to 10 units.,warning,2026-08-14T19:06:02.441698,0
+27,,"Inventory critical: Sensor Cables is at 0 units, which is below 70% depletion threshold.",critical,2026-08-14T19:06:02.448102,0
+28,,"Inventory critical: Coolant 5L is at 0 units, which is below 70% depletion threshold.",critical,2026-08-14T19:06:02.455181,0
+29,,Reorder placed for Coolant 5L. Stock replenished to 30 units.,warning,2026-08-14T19:06:03.359365,0
+30,,"Inventory critical: Sensor Cables is at 0 units, which is below 70% depletion threshold.",critical,2026-08-14T19:06:03.369096,0
+31,,"Inventory critical: Sensor Cables is at 0 units, which is below 70% depletion threshold.",critical,2026-08-14T19:06:03.399750,0
+32,,Reorder placed for Sensor Cables. Stock replenished to 20 units.,warning,2026-08-14T19:06:04.171703,0

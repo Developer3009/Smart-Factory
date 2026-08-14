@@ -1,0 +1,6 @@
+item_id,name,quantity,reorder_level,supplier_id,last_restocked_at
+1,Motor Bearings,0,50,1,2026-08-14T19:05:57.513569
+2,Lubricant 500ml,0,100,3,2026-08-14T19:06:01.390503
+3,Sensor Cables,0,20,2,2026-08-14T19:06:04.166797
+4,Control Valves,0,10,1,2026-08-14T19:06:02.430811
+5,Coolant 5L,0,30,3,2026-08-14T19:06:03.342802

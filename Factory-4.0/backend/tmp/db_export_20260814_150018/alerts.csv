@@ -1,0 +1,3 @@
+alert_id,prediction_id,message,severity,created_at,resolved
+1,,"Inventory critical: Control Valves is at 0 units, which is below 70% depletion threshold.",critical,2026-08-13T14:50:58.810181,0
+2,,"Inventory critical: Control Valves is at 0 units, which is below 70% depletion threshold.",critical,2026-08-13T14:50:58.831078,0
