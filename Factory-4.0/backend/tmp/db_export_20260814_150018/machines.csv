@@ -1,0 +1,7 @@
+machine_id,name,type,location,status
+1,CNC Lathe A1,CNC,Zone A,running
+2,CNC Lathe A2,CNC,Zone A,running
+3,Injection Molder B1,Molder,Zone B,running
+4,Assembly Robot C1,Robot,Zone C,running
+5,Assembly Robot C2,Robot,Zone C,running
+6,Packaging Line P1,Packaging,Zone P,running
