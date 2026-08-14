@@ -4,6 +4,18 @@ const api = axios.create({
   baseURL: 'http://localhost:8000/api',
 });
 
+// Authorization helper
+export function setAuthToken(token?: string) {
+  if (token) {
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  } else {
+    delete api.defaults.headers.common['Authorization'];
+  }
+}
+
+export const registerFace = (formData: FormData) => api.post('/auth/register-face', formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then(res => res.data);
+export const loginFace = (formData: FormData) => api.post('/auth/login-face', formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then(res => res.data);
+
 export const getMachines = () => api.get('/machines').then(res => res.data);
 export const getMachineReadings = (id: number) => api.get(`/machines/${id}/readings`).then(res => res.data);
 export const getOEE = () => api.get('/production/oee').then(res => res.data);

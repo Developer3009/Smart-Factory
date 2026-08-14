@@ -6,6 +6,7 @@ import Production from './pages/Production.tsx';
 import Quality from './pages/Quality.tsx';
 import Inventory from './pages/Inventory.tsx';
 import AIAssistant from './pages/AIAssistant.tsx';
+import FaceAuth from './pages/FaceAuth.tsx';
 
 function Sidebar() {
   return (
@@ -36,6 +37,9 @@ function Sidebar() {
         <Link to="/ai" className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors">
           <Bot size={20} /> AI Agent
         </Link>
+        <Link to="/face-auth" className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors">
+          <Factory size={20} /> Face Login
+        </Link>
       </nav>
     </div>
   );
@@ -54,6 +58,7 @@ function App() {
             <Route path="/quality" element={<Quality />} />
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/ai" element={<AIAssistant />} />
+            <Route path="/face-auth" element={<FaceAuth />} />
           </Routes>
         </main>
       </div>
