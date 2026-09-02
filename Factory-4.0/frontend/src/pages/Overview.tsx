@@ -46,20 +46,24 @@ export default function Overview() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Factory Overview</h1>
-        <div className="flex items-center gap-4 bg-surface p-3 rounded-xl border border-slate-700">
-          <span className="text-sm text-slate-300">Simulator:</span>
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Automotive manufacturing</p>
+          <h1 className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">Spare Parts Production Overview</h1>
+        </div>
+
+        <div className="flex items-center gap-4 rounded-2xl border border-slate-700 bg-surface p-3 shadow-lg shadow-slate-950/10">
+          <span className="text-sm text-slate-300">Digital twin:</span>
           <div className="flex gap-2">
             <button 
               onClick={() => toggleSimulator(true)}
-              className={`px-3 py-1 rounded-md text-sm font-medium ${simStatus?.is_running ? 'bg-success/20 text-success' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium ${simStatus?.is_running ? 'bg-success/20 text-success' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
             >
               Start
             </button>
             <button 
               onClick={() => toggleSimulator(false)}
-              className={`px-3 py-1 rounded-md text-sm font-medium ${!simStatus?.is_running ? 'bg-danger/20 text-danger' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium ${!simStatus?.is_running ? 'bg-danger/20 text-danger' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
             >
               Stop
             </button>
@@ -67,30 +71,29 @@ export default function Overview() {
         </div>
       </div>
 
-      {/* KPI Cards */}
       <div className="grid grid-cols-4 gap-6">
-        <div className="bg-surface p-6 rounded-xl border border-slate-700 flex flex-col justify-between">
-          <div className="flex justify-between text-slate-400 mb-4">
-            <span>Overall OEE</span>
-            <Activity size={20} />
+        <div className="bg-surface p-6 rounded-xl border border-slate-700 flex flex-col justify-between shadow-lg shadow-slate-950/10">
+          <div className="mb-4 flex items-center justify-between text-slate-400">
+            <span className="text-sm uppercase tracking-wide">Overall OEE</span>
+            <Activity size={18} className="text-primary" />
           </div>
           <div className="text-4xl font-bold text-primary">{oee?.overall ?? '--'}%</div>
         </div>
-        <div className="bg-surface p-6 rounded-xl border border-slate-700 flex flex-col justify-between">
-          <div className="flex justify-between text-slate-400 mb-4">
-            <span>Availability</span>
+        <div className="bg-surface p-6 rounded-xl border border-slate-700 flex flex-col justify-between shadow-lg shadow-slate-950/10">
+          <div className="mb-4 flex items-center justify-between text-slate-400">
+            <span className="text-sm uppercase tracking-wide">Availability</span>
           </div>
           <div className="text-3xl font-bold">{oee?.availability ?? '--'}%</div>
         </div>
-        <div className="bg-surface p-6 rounded-xl border border-slate-700 flex flex-col justify-between">
-          <div className="flex justify-between text-slate-400 mb-4">
-            <span>Performance</span>
+        <div className="bg-surface p-6 rounded-xl border border-slate-700 flex flex-col justify-between shadow-lg shadow-slate-950/10">
+          <div className="mb-4 flex items-center justify-between text-slate-400">
+            <span className="text-sm uppercase tracking-wide">Performance</span>
           </div>
           <div className="text-3xl font-bold">{oee?.performance ?? '--'}%</div>
         </div>
-        <div className="bg-surface p-6 rounded-xl border border-slate-700 flex flex-col justify-between">
-          <div className="flex justify-between text-slate-400 mb-4">
-            <span>Quality</span>
+        <div className="bg-surface p-6 rounded-xl border border-slate-700 flex flex-col justify-between shadow-lg shadow-slate-950/10">
+          <div className="mb-4 flex items-center justify-between text-slate-400">
+            <span className="text-sm uppercase tracking-wide">Quality</span>
           </div>
           <div className="text-3xl font-bold">{oee?.quality ?? '--'}%</div>
         </div>
