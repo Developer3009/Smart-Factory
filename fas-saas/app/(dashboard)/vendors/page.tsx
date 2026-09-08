@@ -1,8 +1,10 @@
 import { prisma } from "@/lib/prisma";
+import { requireOrgAdmin } from "@/lib/auth";
 
 export default async function VendorsPage() {
+  const { orgId } = await requireOrgAdmin();
   let vendors: any[] = [];
-  try { vendors = await prisma.vendor.findMany({ orderBy: { createdAt: "desc" } }); } catch {}
+  try { vendors = await prisma.vendor.findMany({ where: { organizationId: orgId }, orderBy: { createdAt: "desc" } }); } catch {}
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -25,3 +27,4 @@ export default async function VendorsPage() {
     </div>
   );
 }
+
