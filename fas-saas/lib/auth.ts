@@ -62,16 +62,16 @@ export async function getAuthContext(): Promise<AuthContext> {
     };
   }
 
-  // Regular user — use their org or fall back to a default
-  // Do NOT redirect to /sign-in here — it causes an infinite redirect loop
-  // because the user IS signed in but just hasn't selected an org yet.
-  const effectiveOrgId = orgId ?? process.env.NEXT_PUBLIC_ORG_ID ?? DEMO_ORG_ID;
+  // Regular user — must select an organization first.
+  // Redirect to /select-org if no org is active in the Clerk session.
+  // This prevents data leakage and ensures the user belongs to the right tenant.
+  if (!orgId) redirect("/select-org");
 
   const role = clerkOrgRoleToAppRole(orgRole ?? undefined);
 
   return {
     userId,
-    orgId: effectiveOrgId,
+    orgId,
     role,
     isSaasAdmin: false,
     isOrgAdmin: role === ROLES.ORG_ADMIN,
