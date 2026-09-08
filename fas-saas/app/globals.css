@@ -1,0 +1,211 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", system-ui, sans-serif;
+
+  /* ── Brand Colors ── */
+  --color-brand-50:  #f0f4ff;
+  --color-brand-100: #e0e9ff;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+
+  /* ── Status Colors ── */
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-danger:  #ef4444;
+  --color-info:    #06b6d4;
+
+  /* ── Stat Card Icon Colors ── */
+  --color-icon-green:  #22c55e;
+  --color-icon-orange: #f97316;
+  --color-icon-purple: #8b5cf6;
+  --color-icon-cyan:   #06b6d4;
+  --color-icon-red:    #ef4444;
+  --color-icon-dark:   #1f2937;
+}
+
+/* ── Light Mode (default) ─────────────────────────────────────────── */
+:root {
+  --bg-page:        #f1f5f9;
+  --bg-sidebar:     #ffffff;
+  --bg-card:        #ffffff;
+  --bg-topbar:      #ffffff;
+  --bg-table-head:  #f8fafc;
+  --bg-table-row:   #ffffff;
+  --bg-table-hover: #f8fafc;
+  --text-primary:   #0f172a;
+  --text-secondary: #64748b;
+  --text-muted:     #94a3b8;
+  --border-color:   #e2e8f0;
+  --sidebar-active-bg:   #ede9fe;
+  --sidebar-active-text: #7c3aed;
+  --sidebar-text:        #475569;
+  --sidebar-icon:        #94a3b8;
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+}
+
+/* ── Dark Mode ─────────────────────────────────────────────────────── */
+.dark {
+  --bg-page:        #0f172a;
+  --bg-sidebar:     #111827;
+  --bg-card:        #1e293b;
+  --bg-topbar:      #1e293b;
+  --bg-table-head:  #1e293b;
+  --bg-table-row:   #1e293b;
+  --bg-table-hover: #273449;
+  --text-primary:   #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted:     #64748b;
+  --border-color:   #334155;
+  --sidebar-active-bg:   #2d1f7a;
+  --sidebar-active-text: #a78bfa;
+  --sidebar-text:        #94a3b8;
+  --sidebar-icon:        #64748b;
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.3);
+}
+
+/* ── Base Resets ───────────────────────────────────────────────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-family: "Inter", system-ui, sans-serif; }
+
+body {
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 99px; }
+
+/* ── Card ──────────────────────────────────────────────────────────── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: var(--shadow-card);
+}
+
+/* ── Status Badges ─────────────────────────────────────────────────── */
+.badge { display: inline-flex; align-items: center; padding: 3px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.badge-green  { background: #dcfce7; color: #15803d; }
+.badge-cyan   { background: #cffafe; color: #0e7490; }
+.badge-yellow { background: #fef9c3; color: #a16207; }
+.badge-red    { background: #fee2e2; color: #b91c1c; }
+.badge-gray   { background: #f1f5f9; color: #475569; }
+
+.dark .badge-green  { background: #14532d40; color: #4ade80; }
+.dark .badge-cyan   { background: #0e749040; color: #22d3ee; }
+.dark .badge-yellow { background: #a1620740; color: #fbbf24; }
+.dark .badge-red    { background: #b91c1c40; color: #f87171; }
+.dark .badge-gray   { background: #1e293b; color: #94a3b8; }
+
+/* ── Table ─────────────────────────────────────────────────────────── */
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table thead tr { background: var(--bg-table-head); }
+.data-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+.data-table td {
+  padding: 13px 16px;
+  font-size: 14px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+}
+.data-table tbody tr:hover { background: var(--bg-table-hover); }
+.data-table tbody tr:last-child td { border-bottom: none; }
+
+/* ── Sidebar Nav Link ──────────────────────────────────────────────── */
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--sidebar-text);
+  transition: all 0.15s ease;
+  cursor: pointer;
+  text-decoration: none;
+}
+.nav-link:hover { background: var(--bg-table-hover); color: var(--text-primary); }
+.nav-link.active {
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-active-text);
+}
+
+/* ── Icon Circle ───────────────────────────────────────────────────── */
+.icon-circle {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ── Input ─────────────────────────────────────────────────────────── */
+.input {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.input:focus { border-color: #6366f1; }
+
+/* ── Button ────────────────────────────────────────────────────────── */
+.btn-primary {
+  background: #6366f1;
+  color: white;
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s;
+}
+.btn-primary:hover { background: #4f46e5; }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s;
+}
+.btn-ghost:hover { background: var(--bg-table-hover); color: var(--text-primary); }
+
+.btn-icon {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.15s;
+}
+.btn-icon:hover { background: var(--bg-table-hover); color: var(--text-primary); }

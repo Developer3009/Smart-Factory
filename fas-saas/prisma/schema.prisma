@@ -1,0 +1,274 @@
+// Prisma Schema — Factory Management System
+// SQLite datasource for local dev (swap to postgresql for Railway/production)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Organization (Tenant Root) ───────────────────────────────────────────────
+
+model Organization {
+  id               String   @id @default(cuid())
+  clerkOrgId       String?  @unique
+  name             String
+  plan             String   @default("STARTER") // STARTER | PRO | ENTERPRISE
+  stripeCustomerId String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  plants           Plant[]
+  users            OrgUser[]
+  products         Product[]
+  workOrders       WorkOrder[]
+  inventoryItems   InventoryItem[]
+  downtimeCodes    DowntimeReasonCode[]
+  customers        Customer[]
+  vendors          Vendor[]
+  purchaseOrders   PurchaseOrder[]
+}
+
+// ─── Plant ────────────────────────────────────────────────────────────────────
+
+model Plant {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  location       String?
+  createdAt      DateTime @default(now())
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  machines       Machine[]
+  workOrders     WorkOrder[]
+  inventoryItems InventoryItem[]
+}
+
+// ─── Machine ──────────────────────────────────────────────────────────────────
+
+model Machine {
+  id             String   @id @default(cuid())
+  organizationId String
+  plantId        String
+  name           String
+  description    String?
+  machineType    String   @default("General")
+  status         String   @default("IDLE") // RUNNING | IDLE | DOWN
+  createdAt      DateTime @default(now())
+
+  plant          Plant           @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  productionLogs ProductionLog[]
+  downtimeEvents DowntimeEvent[]
+}
+
+// ─── OrgUser ──────────────────────────────────────────────────────────────────
+
+model OrgUser {
+  id             String   @id @default(cuid())
+  organizationId String
+  clerkUserId    String
+  name           String   @default("User")
+  email          String?
+  role           String   @default("OPERATOR") // ADMIN | PLANT_MANAGER | SUPERVISOR | OPERATOR
+  createdAt      DateTime @default(now())
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  productionLogs ProductionLog[]
+}
+
+// ─── Product ──────────────────────────────────────────────────────────────────
+
+model Product {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  sku            String
+  description    String?
+  unitPrice      Float    @default(0)
+  createdAt      DateTime @default(now())
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bomItems       BomItem[]
+  workOrders     WorkOrder[]
+}
+
+// ─── Bill of Materials ────────────────────────────────────────────────────────
+
+model BomItem {
+  id        String @id @default(cuid())
+  productId String
+  itemId    String
+  quantity  Float
+  unit      String @default("pcs")
+
+  product   Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  item      InventoryItem @relation(fields: [itemId], references: [id])
+}
+
+// ─── Work Order ───────────────────────────────────────────────────────────────
+
+model WorkOrder {
+  id             String   @id @default(cuid())
+  organizationId String
+  plantId        String
+  productId      String
+  quantity       Int
+  dueDate        DateTime
+  estimatedHrs   Float?
+  status         String   @default("QUEUED") // QUEUED | IN_PROGRESS | COMPLETED | ON_HOLD
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plant          Plant         @relation(fields: [plantId], references: [id])
+  product        Product       @relation(fields: [productId], references: [id])
+  routingSteps   RoutingStep[]
+  productionLogs ProductionLog[]
+}
+
+// ─── Routing Step ─────────────────────────────────────────────────────────────
+
+model RoutingStep {
+  id           String  @id @default(cuid())
+  workOrderId  String
+  stepNumber   Int
+  description  String
+  machineType  String?
+  estimatedHrs Float?
+  status       String  @default("PENDING") // PENDING | IN_PROGRESS | COMPLETED
+
+  workOrder    WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+}
+
+// ─── Production Log ───────────────────────────────────────────────────────────
+
+model ProductionLog {
+  id               String    @id @default(cuid())
+  organizationId   String
+  workOrderId      String
+  machineId        String
+  operatorId       String
+  startTime        DateTime  @default(now())
+  endTime          DateTime?
+  quantityProduced Int       @default(0)
+  status           String    @default("IN_PROGRESS") // IN_PROGRESS | PAUSED | COMPLETED
+  notes            String?
+
+  workOrder        WorkOrder @relation(fields: [workOrderId], references: [id])
+  machine          Machine   @relation(fields: [machineId], references: [id])
+  operator         OrgUser   @relation(fields: [operatorId], references: [id])
+}
+
+// ─── Downtime ─────────────────────────────────────────────────────────────────
+
+model DowntimeEvent {
+  id             String    @id @default(cuid())
+  organizationId String
+  machineId      String
+  reasonCodeId   String?
+  startTime      DateTime  @default(now())
+  endTime        DateTime?
+  notes          String?
+
+  machine        Machine             @relation(fields: [machineId], references: [id])
+  reasonCode     DowntimeReasonCode? @relation(fields: [reasonCodeId], references: [id])
+}
+
+model DowntimeReasonCode {
+  id             String   @id @default(cuid())
+  organizationId String
+  code           String
+  description    String
+  createdAt      DateTime @default(now())
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  events         DowntimeEvent[]
+}
+
+// ─── Inventory ────────────────────────────────────────────────────────────────
+
+model InventoryItem {
+  id             String   @id @default(cuid())
+  organizationId String
+  plantId        String?
+  sku            String
+  name           String
+  type           String   @default("RAW_MATERIAL") // RAW_MATERIAL | FINISHED_GOOD | WIP
+  quantityOnHand Float    @default(0)
+  reorderPoint   Float    @default(0)
+  unit           String   @default("pcs")
+  unitCost       Float    @default(0)
+  createdAt      DateTime @default(now())
+
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plant          Plant?              @relation(fields: [plantId], references: [id])
+  movements      InventoryMovement[]
+  bomItems       BomItem[]
+}
+
+model InventoryMovement {
+  id        String   @id @default(cuid())
+  itemId    String
+  quantity  Float
+  type      String   // RECEIPT | CONSUMPTION | ADJUSTMENT
+  reference String?
+  notes     String?
+  timestamp DateTime @default(now())
+
+  item      InventoryItem @relation(fields: [itemId], references: [id])
+}
+
+// ─── Customers & Sales ────────────────────────────────────────────────────────
+
+model Customer {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  email          String?
+  phone          String?
+  address        String?
+  createdAt      DateTime @default(now())
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  orders         SalesOrder[]
+}
+
+model SalesOrder {
+  id         String   @id @default(cuid())
+  customerId String
+  amount     Float
+  status     String   @default("PENDING")
+  createdAt  DateTime @default(now())
+
+  customer   Customer @relation(fields: [customerId], references: [id])
+}
+
+// ─── Vendors & Purchase ───────────────────────────────────────────────────────
+
+model Vendor {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  email          String?
+  phone          String?
+  createdAt      DateTime @default(now())
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  purchaseOrders PurchaseOrder[]
+}
+
+model PurchaseOrder {
+  id             String   @id @default(cuid())
+  organizationId String
+  vendorId       String
+  amount         Float
+  status         String   @default("PENDING") // PENDING | APPROVED | RECEIVED | CANCELLED
+  createdAt      DateTime @default(now())
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vendor         Vendor       @relation(fields: [vendorId], references: [id])
+}
