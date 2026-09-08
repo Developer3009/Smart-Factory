@@ -94,7 +94,6 @@ export default function SaasAdminDashboard({
                   <th>Users</th>
                   <th>Plants</th>
                   <th>Work Orders</th>
-                  <th>Machines</th>
                   <th>Joined</th>
                 </tr>
               </thead>
@@ -115,7 +114,6 @@ export default function SaasAdminDashboard({
                     <td style={{ fontWeight: 600 }}>{org._count.users}</td>
                     <td style={{ color: "var(--text-secondary)" }}>{org._count.plants}</td>
                     <td style={{ color: "var(--text-secondary)" }}>{org._count.workOrders}</td>
-                    <td style={{ color: "var(--text-secondary)" }}>{org._count.machines}</td>
                     <td style={{ fontSize: 12, color: "var(--text-muted)" }}>
                       {new Date(org.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "2-digit" })}
                     </td>

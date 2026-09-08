@@ -22,7 +22,7 @@ export default async function SaasAdminPage() {
           users: true,
           plants: true,
           workOrders: true,
-          machines: true,
+          // machines are on Plant, not Organization — counted via plants
         },
       },
     },
