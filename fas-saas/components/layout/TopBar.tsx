@@ -98,7 +98,6 @@ export default function TopBar({ title, subtitle }: { title: string; subtitle?: 
 
         {/* Clerk UserButton — profile photo, sign out, user settings */}
         <UserButton
-          afterSignOutUrl="/sign-in"
           appearance={{
             elements: {
               avatarBox: { width: 34, height: 34, borderRadius: "50%" },

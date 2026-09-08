@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# SQLite local dev database
+prisma/*.db
+prisma/*.db-journal
+
+# Turbopack root warning fix
+!package-lock.json

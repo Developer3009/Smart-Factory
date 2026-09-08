@@ -17,7 +17,10 @@ export async function GET() {
         prisma.orgUser.count({ where: { organizationId: orgId } }),
       ]);
 
-    const salesOrders = await prisma.salesOrder.findMany({ where: { organizationId: orgId } });
+    // SalesOrder links through Customer → use a join via customer organizationId
+    const salesOrders = await prisma.salesOrder.findMany({
+      where: { customer: { organizationId: orgId } },
+    });
     const totalProfit = salesOrders.reduce((sum, o) => sum + o.amount, 0);
 
     const pending = await prisma.workOrder.count({ where: { organizationId: orgId, status: "QUEUED" } });
