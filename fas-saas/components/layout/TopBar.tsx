@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { Search, Sun, Moon, Settings, Bell } from "lucide-react";
 import { UserButton, OrganizationSwitcher } from "@clerk/nextjs";
+import { Role, ROLES } from "@/lib/roles";
 
-export default function TopBar({ title, subtitle }: { title: string; subtitle?: string }) {
+export default function TopBar({ title, subtitle, role }: { title: string; subtitle?: string; role?: Role }) {
   const [dark, setDark] = useState(false);
   const [search, setSearch] = useState("");
 

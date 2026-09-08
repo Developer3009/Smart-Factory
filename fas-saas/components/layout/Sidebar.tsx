@@ -15,23 +15,46 @@ import {
   ShoppingCart,
   Settings,
   Cog,
+  UserCog,
+  Zap,
+  Shield,
 } from "lucide-react";
+import { Role, ROLES } from "@/lib/roles";
 
-const navItems = [
-  { label: "Dashboard",     href: "/dashboard",      icon: LayoutDashboard },
-  { label: "Machines",      href: "/machines",       icon: Cpu },
-  { label: "Inventory",     href: "/inventory",      icon: Package },
-  { label: "Production",    href: "/production",     icon: Factory },
-  { label: "Customers",     href: "/customers",      icon: Users },
-  { label: "Products",      href: "/products",       icon: ShoppingBag },
-  { label: "Orders",        href: "/orders",         icon: ClipboardList },
-  { label: "Vendors",       href: "/vendors",        icon: Truck },
-  { label: "Raw Materials", href: "/raw-materials",  icon: Layers },
-  { label: "Purchase",      href: "/purchase",       icon: ShoppingCart },
+// ─── Navigation Items ──────────────────────────────────────────────────────────
+
+const ALL_NAV_ITEMS = [
+  { label: "Dashboard",     href: "/dashboard",     icon: LayoutDashboard, roles: ["SAAS_ADMIN", "ORG_ADMIN", "MEMBER"] },
+  { label: "Machines",      href: "/machines",      icon: Cpu,             roles: ["SAAS_ADMIN", "ORG_ADMIN", "MEMBER"] },
+  { label: "Inventory",     href: "/inventory",     icon: Package,         roles: ["SAAS_ADMIN", "ORG_ADMIN", "MEMBER"] },
+  { label: "Production",    href: "/production",    icon: Factory,         roles: ["SAAS_ADMIN", "ORG_ADMIN", "MEMBER"] },
+  { label: "Orders",        href: "/orders",        icon: ClipboardList,   roles: ["SAAS_ADMIN", "ORG_ADMIN", "MEMBER"] },
+  { label: "Raw Materials", href: "/raw-materials", icon: Layers,          roles: ["SAAS_ADMIN", "ORG_ADMIN", "MEMBER"] },
+  // Admin-only items below
+  { label: "Customers",     href: "/customers",     icon: Users,           roles: ["SAAS_ADMIN", "ORG_ADMIN"] },
+  { label: "Products",      href: "/products",      icon: ShoppingBag,     roles: ["SAAS_ADMIN", "ORG_ADMIN"] },
+  { label: "Vendors",       href: "/vendors",       icon: Truck,           roles: ["SAAS_ADMIN", "ORG_ADMIN"] },
+  { label: "Purchase",      href: "/purchase",      icon: ShoppingCart,    roles: ["SAAS_ADMIN", "ORG_ADMIN"] },
+  { label: "Members",       href: "/members",       icon: UserCog,         roles: ["SAAS_ADMIN", "ORG_ADMIN"] },
 ];
 
-export default function Sidebar() {
+const BOTTOM_ITEMS = [
+  { label: "Settings",      href: "/settings",      icon: Settings,        roles: ["SAAS_ADMIN", "ORG_ADMIN"] },
+];
+
+// ─── Sidebar ───────────────────────────────────────────────────────────────────
+
+export default function Sidebar({ role }: { role: Role }) {
   const pathname = usePathname();
+
+  const visibleNav = ALL_NAV_ITEMS.filter(item => item.roles.includes(role));
+  const visibleBottom = BOTTOM_ITEMS.filter(item => item.roles.includes(role));
+
+  const roleBadge = {
+    SAAS_ADMIN: { label: "Platform Admin", color: "#f59e0b", bg: "#fef3c7" },
+    ORG_ADMIN:  { label: "Admin",          color: "#6366f1", bg: "#ede9fe" },
+    MEMBER:     { label: "Member",         color: "#06b6d4", bg: "#cffafe" },
+  }[role];
 
   return (
     <aside
@@ -80,8 +103,29 @@ export default function Sidebar() {
         </div>
       </div>
 
+      {/* Role Badge */}
+      <div style={{ padding: "10px 16px 4px" }}>
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+            fontSize: 11,
+            fontWeight: 700,
+            padding: "3px 10px",
+            borderRadius: 99,
+            background: roleBadge.bg,
+            color: roleBadge.color,
+          }}
+        >
+          {role === ROLES.SAAS_ADMIN && <Shield size={11} />}
+          {role === ROLES.ORG_ADMIN && <Zap size={11} />}
+          {roleBadge.label}
+        </span>
+      </div>
+
       {/* Nav */}
-      <nav style={{ flex: 1, padding: "12px 12px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 2 }}>
+      <nav style={{ flex: 1, padding: "8px 12px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 2 }}>
         <div
           style={{
             fontSize: 10,
@@ -95,7 +139,7 @@ export default function Sidebar() {
           Main Menu
         </div>
 
-        {navItems.map(({ label, href, icon: Icon }) => {
+        {visibleNav.map(({ label, href, icon: Icon }) => {
           const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
           return (
             <Link key={href} href={href} className={`nav-link${active ? " active" : ""}`}>
@@ -104,15 +148,41 @@ export default function Sidebar() {
             </Link>
           );
         })}
+
+        {/* SaaS Admin — Platform Admin section */}
+        {role === ROLES.SAAS_ADMIN && (
+          <>
+            <div
+              style={{
+                fontSize: 10, fontWeight: 700, letterSpacing: "0.08em",
+                color: "#f59e0b", padding: "12px 8px 6px", textTransform: "uppercase",
+              }}
+            >
+              ⚡ Platform
+            </div>
+            <Link
+              href="/saas-admin"
+              className={`nav-link${pathname.startsWith("/saas-admin") ? " active" : ""}`}
+              style={{ color: "#f59e0b" }}
+            >
+              <Shield size={17} style={{ flexShrink: 0 }} />
+              <span>All Organizations</span>
+            </Link>
+          </>
+        )}
       </nav>
 
-      {/* Bottom Settings */}
-      <div style={{ padding: "12px 12px", borderTop: "1px solid var(--border-color)" }}>
-        <Link href="/settings" className="nav-link">
-          <Settings size={17} />
-          <span>Settings</span>
-        </Link>
-      </div>
+      {/* Bottom */}
+      {visibleBottom.length > 0 && (
+        <div style={{ padding: "12px 12px", borderTop: "1px solid var(--border-color)" }}>
+          {visibleBottom.map(({ label, href, icon: Icon }) => (
+            <Link key={href} href={href} className={`nav-link${pathname === href ? " active" : ""}`}>
+              <Icon size={17} />
+              <span>{label}</span>
+            </Link>
+          ))}
+        </div>
+      )}
     </aside>
   );
 }
