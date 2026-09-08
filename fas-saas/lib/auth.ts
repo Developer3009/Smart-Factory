@@ -62,14 +62,16 @@ export async function getAuthContext(): Promise<AuthContext> {
     };
   }
 
-  // Regular user — must belong to an org
-  if (!orgId) redirect("/sign-in"); // no org selected yet
+  // Regular user — use their org or fall back to a default
+  // Do NOT redirect to /sign-in here — it causes an infinite redirect loop
+  // because the user IS signed in but just hasn't selected an org yet.
+  const effectiveOrgId = orgId ?? process.env.NEXT_PUBLIC_ORG_ID ?? DEMO_ORG_ID;
 
   const role = clerkOrgRoleToAppRole(orgRole ?? undefined);
 
   return {
     userId,
-    orgId,
+    orgId: effectiveOrgId,
     role,
     isSaasAdmin: false,
     isOrgAdmin: role === ROLES.ORG_ADMIN,
