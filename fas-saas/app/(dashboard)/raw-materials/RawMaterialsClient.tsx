@@ -99,7 +99,7 @@ export default function RawMaterialsClient({ items: initial, orgId }: { items: R
                   <td style={{ fontWeight: 600 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       {item.name}
-                      {lowStock && <AlertTriangle size={13} style={{ color: "#f59e0b" }} title="Low stock!" />}
+                      {lowStock && <AlertTriangle size={13} style={{ color: "#f59e0b" }} />}
                     </div>
                   </td>
                   <td style={{ fontFamily: "monospace", fontSize: 12, color: "var(--text-muted)" }}>{item.sku}</td>
