@@ -1,13 +1,57 @@
 "use client";
 
-import { useState } from "react";
-import { Download, Plus, Search, Eye, ChevronLeft, ChevronRight } from "lucide-react";
+import { useState, useTransition } from "react";
+import { Download, Plus, Search, Eye, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Role, ROLES } from "@/lib/roles";
+import { useRouter } from "next/navigation";
 
 const PAGE_SIZE = 10;
 
-export default function MachinesClient({ machines }: { machines: any[] }) {
+export default function MachinesClient({ machines, plants, role }: { machines: any[]; plants: any[]; role: Role }) {
+  const router = useRouter();
+  const [, startTransition] = useTransition();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [selectedMachine, setSelectedMachine] = useState<any>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [form, setForm] = useState({ name: "", machineType: "CNC", description: "", plantId: plants[0]?.id ?? "" });
+
+  async function createMachine(event: React.FormEvent) {
+    event.preventDefault();
+    setError("");
+    setSaving(true);
+    try {
+      const response = await fetch("/api/machines", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Could not create machine");
+      setShowCreate(false);
+      setForm({ name: "", machineType: "CNC", description: "", plantId: plants[0]?.id ?? "" });
+      startTransition(() => router.refresh());
+    } catch (createError) {
+      setError(createError instanceof Error ? createError.message : "Could not create machine");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function exportMachines() {
+    const header = "Name,Type,Status,Plant,Description";
+    const rows = machines.map(machine => [machine.name, machine.machineType, machine.status, machine.plant?.name ?? "", machine.description ?? ""]
+      .map(value => `"${String(value).replaceAll('"', '""')}"`).join(","));
+    const blob = new Blob([[header, ...rows].join("\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "machines.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  }
 
   const filtered = machines.filter((m) =>
     m.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -19,20 +63,32 @@ export default function MachinesClient({ machines }: { machines: any[] }) {
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const statusBadge = (status: string) => {
+    const isRunning = status === "RUNNING";
     const map: Record<string, string> = {
       RUNNING: "badge badge-green",
       IDLE:    "badge badge-yellow",
       DOWN:    "badge badge-red",
     };
-    const label: Record<string, string> = { RUNNING: "Active", IDLE: "Idle", DOWN: "Down" };
-    return <span className={map[status] ?? "badge badge-gray"}>{label[status] ?? status}</span>;
+    const label: Record<string, string> = { RUNNING: "Active", IDLE: "Idle", DOWN: "Offline" };
+    const dotColor = isRunning ? "#22c55e" : status === "IDLE" ? "#f59e0b" : "#ef4444";
+
+    return (
+      <span className={map[status] ?? "badge badge-gray"} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+        <span style={{ 
+          width: 8, height: 8, borderRadius: "50%", background: dotColor,
+          boxShadow: isRunning ? "0 0 8px rgba(34,197,94,0.6)" : "none",
+          animation: isRunning ? "pulse 2s infinite" : "none"
+        }} />
+        {label[status] ?? status}
+      </span>
+    );
   };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {/* Controls */}
       <div className="card" style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-        <button className="btn-ghost">
+        <button className="btn-ghost" onClick={exportMachines}>
           <Download size={14} />
           EXPORT
         </button>
@@ -47,9 +103,11 @@ export default function MachinesClient({ machines }: { machines: any[] }) {
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           />
         </div>
-        <button className="btn-icon" style={{ border: "1px solid var(--border-color)", borderRadius: 8, padding: 6 }}>
-          <Plus size={18} />
-        </button>
+        {role !== ROLES.MEMBER && (
+          <button className="btn-icon" title="Add machine" onClick={() => { setError(""); setShowCreate(true); }} style={{ border: "1px solid var(--border-color)", borderRadius: 8, padding: 6 }}>
+            <Plus size={18} />
+          </button>
+        )}
       </div>
 
       {/* Table */}
@@ -84,7 +142,7 @@ export default function MachinesClient({ machines }: { machines: any[] }) {
                     <td style={{ color: "var(--text-secondary)" }}>{m.machineType}</td>
                     <td>{statusBadge(m.status)}</td>
                     <td>
-                      <button className="btn-icon" title="View details">
+                      <button className="btn-icon" title="View details" onClick={() => setSelectedMachine(m)}>
                         <Eye size={16} style={{ color: "#06b6d4" }} />
                       </button>
                     </td>
@@ -127,6 +185,49 @@ export default function MachinesClient({ machines }: { machines: any[] }) {
           </button>
         </div>
       </div>
+
+      {showCreate && role !== ROLES.MEMBER && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <form className="card" onSubmit={createMachine} style={{ width: 460, padding: 24, display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>Add Machine</div>
+              <button type="button" className="btn-icon" title="Close" onClick={() => setShowCreate(false)}><X size={16} /></button>
+            </div>
+            <input className="input" placeholder="Machine name, e.g. CNC Lathe A1" value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} required />
+            <select className="input" value={form.machineType} onChange={event => setForm({ ...form, machineType: event.target.value })}>
+              <option>CNC</option><option>Mill</option><option>Lathe</option><option>Robot</option><option>Press</option><option>General</option>
+            </select>
+            <select className="input" value={form.plantId} onChange={event => setForm({ ...form, plantId: event.target.value })} required>
+              <option value="">Select plant...</option>
+              {plants.map(plant => <option key={plant.id} value={plant.id}>{plant.name}</option>)}
+            </select>
+            <textarea className="input" placeholder="Description or controller details" rows={3} value={form.description} onChange={event => setForm({ ...form, description: event.target.value })} />
+            {error && <div style={{ color: "#dc2626", fontSize: 13 }}>{error}</div>}
+            <button className="btn-primary" type="submit" disabled={saving}>{saving ? "Saving..." : "Add Machine"}</button>
+          </form>
+        </div>
+      )}
+
+      {selectedMachine && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <div className="card" style={{ width: 460, padding: 24 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>{selectedMachine.name}</div>
+              <button className="btn-icon" title="Close" onClick={() => setSelectedMachine(null)}><X size={16} /></button>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, fontSize: 13 }}>
+              <div><strong>Type</strong><br />{selectedMachine.machineType}</div>
+              <div><strong>Status</strong><br />{selectedMachine.status}</div>
+              <div><strong>Plant</strong><br />{selectedMachine.plant?.name ?? "-"}</div>
+              <div><strong>Created</strong><br />{new Date(selectedMachine.createdAt).toLocaleDateString()}</div>
+            </div>
+            <p style={{ color: "var(--text-secondary)", fontSize: 13, marginTop: 18 }}>{selectedMachine.description || "No description recorded."}</p>
+            <div style={{ marginTop: 18, padding: 12, background: "var(--bg-page)", borderRadius: 8, color: "var(--text-muted)", fontSize: 12 }}>
+              Live CNC/PLC telemetry is supplied by the factory gateway through the IoT ingestion service.
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

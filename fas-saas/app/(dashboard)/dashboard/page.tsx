@@ -1,20 +1,30 @@
 import { prisma } from "@/lib/prisma";
+import { getAuthContext } from "@/lib/auth";
 import DashboardClient from "./DashboardClient";
 
-async function getStats() {
+export const dynamic = "force-dynamic";
+
+async function getStats(organizationId: string) {
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const startOfTomorrow = new Date(startOfToday);
+  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+
   try {
     const [orders, products, customers, machines, inventory, rawMaterials, employees, workOrders] =
       await Promise.all([
-        prisma.workOrder.count(),
-        prisma.product.count(),
-        prisma.customer.count(),
-        prisma.machine.count(),
-        prisma.inventoryItem.count({ where: { type: "FINISHED_GOOD" } }),
-        prisma.inventoryItem.count({ where: { type: "RAW_MATERIAL" } }),
-        prisma.orgUser.count(),
+        prisma.workOrder.count({ where: { organizationId } }),
+        prisma.product.count({ where: { organizationId } }),
+        prisma.customer.count({ where: { organizationId } }),
+        prisma.machine.count({ where: { organizationId } }),
+        prisma.inventoryItem.count({ where: { organizationId, type: "FINISHED_GOOD" } }),
+        prisma.inventoryItem.count({ where: { organizationId, type: "RAW_MATERIAL" } }),
+        prisma.orgUser.count({ where: { organizationId } }),
         prisma.workOrder.findMany({
           where: {
+            organizationId,
             status: { in: ["QUEUED", "IN_PROGRESS"] },
+            dueDate: { gte: startOfToday, lt: startOfTomorrow },
           },
           include: { product: true, plant: { include: { machines: { take: 1 } } } },
           orderBy: { createdAt: "desc" },
@@ -23,18 +33,16 @@ async function getStats() {
       ]);
 
     // Calculate profit from sales orders (stub for now)
-    const salesOrders = await prisma.salesOrder.findMany();
+    const salesOrders = await prisma.salesOrder.findMany({
+      where: { customer: { organizationId } },
+    });
     const totalProfit = salesOrders.reduce((sum, o) => sum + o.amount, 0);
 
-    // Production summary for today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayLogs = await prisma.productionLog.findMany({
-      where: { startTime: { gte: today } },
-    });
-    const pending = await prisma.workOrder.count({ where: { status: "QUEUED" } });
-    const inProgress = await prisma.workOrder.count({ where: { status: "IN_PROGRESS" } });
-    const completed = await prisma.workOrder.count({ where: { status: "COMPLETED" } });
+    const [pending, inProgress, completed] = await Promise.all([
+      prisma.workOrder.count({ where: { organizationId, status: "QUEUED", dueDate: { gte: startOfToday, lt: startOfTomorrow } } }),
+      prisma.workOrder.count({ where: { organizationId, status: "IN_PROGRESS", dueDate: { gte: startOfToday, lt: startOfTomorrow } } }),
+      prisma.workOrder.count({ where: { organizationId, status: "COMPLETED", dueDate: { gte: startOfToday, lt: startOfTomorrow } } }),
+    ]);
     const total = pending + inProgress + completed;
 
     return {
@@ -68,6 +76,7 @@ async function getStats() {
 }
 
 export default async function DashboardPage() {
-  const stats = await getStats();
+  const { orgId } = await getAuthContext();
+  const stats = await getStats(orgId);
   return <DashboardClient stats={stats} />;
 }

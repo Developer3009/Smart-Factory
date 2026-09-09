@@ -1,9 +1,12 @@
 "use client";
 
-import { Building2, Shield, CreditCard, Bell, Globe } from "lucide-react";
+import { useOrganization } from "@clerk/nextjs";
+import { Building2, CreditCard, Bell } from "lucide-react";
 import { Role, ROLES } from "@/lib/roles";
 
 export default function SettingsClient({ orgId, role }: { orgId: string; role: Role }) {
+  const { organization } = useOrganization();
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 720 }}>
 
@@ -16,10 +19,13 @@ export default function SettingsClient({ orgId, role }: { orgId: string; role: R
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>
-              Organization ID
+              Organization name
             </label>
-            <div style={{ fontFamily: "monospace", fontSize: 13, color: "var(--text-secondary)", background: "var(--bg-page)", padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border-color)" }}>
-              {orgId}
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", background: "var(--bg-page)", padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border-color)" }}>
+              {organization?.name ?? "Current organization"}
+              <div style={{ fontFamily: "monospace", fontSize: 10, fontWeight: 400, color: "var(--text-muted)", marginTop: 3 }}>
+                {orgId}
+              </div>
             </div>
           </div>
           <div>
