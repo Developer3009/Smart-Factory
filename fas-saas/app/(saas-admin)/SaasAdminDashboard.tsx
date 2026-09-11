@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Building2, Factory, Cpu, Package, TrendingUp, Shield, UserPlus, X, Plus, Users, Eye, EyeOff, ChevronDown, ChevronUp } from "lucide-react";
 
 const PLAN_COLOR: Record<string, string> = { STARTER: "#06b6d4", PRO: "#6366f1", ENTERPRISE: "#f59e0b" };
@@ -16,7 +15,6 @@ export default function SaasAdminDashboard({
   organizations: Organization[];
   planCounts: any[];
 }) {
-  const router = useRouter();
   const [organizations, setOrganizations] = useState<Organization[]>(initialOrgs);
   const [showAddOrg, setShowAddOrg] = useState(false);
   const [showAddAdmin, setShowAddAdmin] = useState(false);
@@ -40,7 +38,6 @@ export default function SaasAdminDashboard({
       setOrganizations(prev => [{ ...data, _count: { users: 0, plants: 0, workOrders: 0 }, users: [] }, ...prev]);
       setSuccess(`✅ Organization "${orgForm.name}" created!`);
       setOrgForm({ name: "", plan: "STARTER" });
-      router.refresh();
     } catch { setError("Network error."); } finally { setLoading(false); }
   }
 
@@ -55,12 +52,8 @@ export default function SaasAdminDashboard({
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Failed"); return; }
       const orgName = organizations.find(o => o.id === selectedOrg)?.name ?? selectedOrg;
-      setOrganizations(prev => prev.map(org => org.id === selectedOrg
-        ? { ...org, _count: { ...org._count, users: org._count.users + 1 }, users: [...(org.users ?? []), data] }
-        : org));
       setSuccess(`✅ ${adminForm.name} added as Admin to "${orgName}"!`);
       setAdminForm({ name: "", email: "", clerkUserId: "" }); setSelectedOrg("");
-      router.refresh();
     } catch { setError("Network error."); } finally { setLoading(false); }
   }
 
@@ -163,12 +156,7 @@ export default function SaasAdminDashboard({
 
         {/* All Organizations Table with expandable login details */}
         <div className="card" style={{ overflow: "hidden" }}>
-          <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border-color)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}><Building2 size={14} style={{ display: "inline", marginRight: 6 }} />All Organizations — Click to view members</div>
-            <button className="btn-primary" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }} onClick={() => { setShowAddOrg(true); setError(""); setSuccess(""); }}>
-              <Plus size={14} /> Add Organization
-            </button>
-          </div>
+          <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border-color)", fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}><Building2 size={14} style={{ display: "inline", marginRight: 6 }} />All Organizations — Click to view members</div>
           <div style={{ overflowX: "auto" }}>
             <table className="data-table">
               <thead><tr><th>Organization</th><th>Plan</th><th>Users</th><th>Plants</th><th>Orders</th><th>Joined</th><th style={{ width: 60 }}>Details</th></tr></thead>

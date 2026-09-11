@@ -3,21 +3,14 @@ import { getAuthContext } from "@/lib/auth";
 import MachinesClient from "./MachinesClient";
 
 export default async function MachinesPage() {
-  const { orgId, role } = await getAuthContext();
+  const { orgId } = await getAuthContext();
   let machines: any[] = [];
-  let plants: any[] = [];
   try {
-    [machines, plants] = await Promise.all([
-      prisma.machine.findMany({
-        where: { organizationId: orgId },
-        include: { plant: true },
-        orderBy: { createdAt: "asc" },
-      }),
-      prisma.plant.findMany({
-        where: { organizationId: orgId },
-        orderBy: { name: "asc" },
-      }),
-    ]);
+    machines = await prisma.machine.findMany({
+      where: { plant: { organizationId: orgId } },
+      include: { plant: true },
+      orderBy: { createdAt: "asc" },
+    });
   } catch {}
-  return <MachinesClient machines={machines} plants={plants} role={role} />;
+  return <MachinesClient machines={machines} />;
 }

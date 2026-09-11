@@ -1,40 +1,36 @@
-# Factory Management System
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-Multi-tenant factory management SaaS built with Next.js, Clerk, Prisma, and PostgreSQL.
+## Getting Started
 
-## Local development
-
-1. Copy `.env.example` to `.env.local`.
-2. Set real Clerk keys and a reachable PostgreSQL `DATABASE_URL`.
-3. Set `SAAS_ADMIN_CLERK_USER_IDS` to one or more Clerk user IDs.
-4. Install and run:
+First, run the development server:
 
 ```bash
-npm install
-npm run db:push
-npm run db:seed
 npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
+
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
+## Learn More
+
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
 ## Deploy on Vercel
 
-Deploy the `fas-saas` directory as a Next.js project on Vercel. Required environment variables are:
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-- `DATABASE_URL`: pooled PostgreSQL connection for runtime requests
-- `DIRECT_URL`: direct PostgreSQL connection for Prisma CLI/migrations
-- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
-- `CLERK_SECRET_KEY`
-- `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in`
-- `NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up`
-- `SAAS_ADMIN_CLERK_USER_IDS`
-- `NEXT_PUBLIC_APP_URL`: deployed application URL
-
-`vercel.json` runs `prisma generate && next build` during deployment. Run `npm run build` locally before publishing.
-
-## Tenant and Clerk integration
-
-Organizations must be created through the SaaS Admin dashboard. The API creates the organization in Clerk and stores its `clerkOrgId` in Prisma. Adding or changing a member also updates the matching Clerk organization membership.
-
-Organization admins and members can access only their active organization. Only SaaS admins can create or switch between organizations.
-
-Existing database organizations created before Clerk integration need a one-time `clerkOrgId` backfill before their users can log in through Clerk.
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

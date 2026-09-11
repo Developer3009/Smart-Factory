@@ -1,8 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 
-if (!process.env.DATABASE_URL?.startsWith("postgresql://") && !process.env.DATABASE_URL?.startsWith("postgres://")) {
-  throw new Error("DATABASE_URL must be a reachable PostgreSQL connection string before seeding.");
-}
+// Ensure DATABASE_URL is set for local dev
+process.env.DATABASE_URL = process.env.DATABASE_URL || "file:./dev.db";
 
 const prisma = new PrismaClient();
 
