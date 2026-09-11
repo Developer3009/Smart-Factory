@@ -59,34 +59,52 @@ export default function MachinesClient({ machines }: { machines: any[] }) {
             <thead>
               <tr>
                 <th style={{ width: 48 }}>#</th>
-                <th>Machine Details</th>
-                <th>Description</th>
-                <th>Machine Type</th>
+                <th>Machine</th>
+                <th>Plant</th>
+                <th>Type</th>
                 <th>Status</th>
-                <th style={{ width: 80 }}>Action</th>
+                <th style={{ width: 110 }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: "center", color: "var(--text-muted)", padding: "32px 16px" }}>
-                    No machines found.
-                  </td>
+                  <td colSpan={6} style={{ textAlign: "center", color: "var(--text-muted)", padding: "32px 16px" }}>No machines found.</td>
                 </tr>
               ) : (
                 paginated.map((m, idx) => (
                   <tr key={m.id}>
-                    <td style={{ color: "var(--text-muted)", fontWeight: 600 }}>
-                      {(page - 1) * PAGE_SIZE + idx + 1}
-                    </td>
-                    <td style={{ fontWeight: 600 }}>{m.name}</td>
-                    <td style={{ color: "var(--text-secondary)" }}>{m.description ?? "-"}</td>
-                    <td style={{ color: "var(--text-secondary)" }}>{m.machineType}</td>
-                    <td>{statusBadge(m.status)}</td>
+                    <td style={{ color: "var(--text-muted)", fontWeight: 600 }}>{(page - 1) * PAGE_SIZE + idx + 1}</td>
                     <td>
-                      <button className="btn-icon" title="View details">
-                        <Eye size={16} style={{ color: "#06b6d4" }} />
-                      </button>
+                      <div style={{ fontWeight: 600 }}>{m.name}</div>
+                      {m.description && <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{m.description}</div>}
+                    </td>
+                    <td style={{ fontSize: 13, color: "var(--text-secondary)" }}>{m.plant?.name ?? "—"}</td>
+                    <td style={{ fontSize: 13 }}>{m.machineType}</td>
+                    <td>
+                      <select
+                        value={m.status}
+                        onChange={async e => {
+                          const newStatus = e.target.value;
+                          const res = await fetch(`/api/machines/${m.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: newStatus }) });
+                          if (res.ok) startTransition(() => router.refresh());
+                        }}
+                        style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 99, border: "none", cursor: "pointer", background: m.status === "RUNNING" ? "#dcfce7" : m.status === "IDLE" ? "#fef9c3" : "#fee2e2", color: m.status === "RUNNING" ? "#15803d" : m.status === "IDLE" ? "#a16207" : "#b91c1c" }}
+                      >
+                        <option value="RUNNING">Running</option>
+                        <option value="IDLE">Idle</option>
+                        <option value="DOWN">Down</option>
+                      </select>
+                    </td>
+                    <td>
+                      <div style={{ display: "flex", gap: 4 }}>
+                        <button className="btn-icon" title="View" onClick={() => setSelectedMachine(m)}><Eye size={15} style={{ color: "#06b6d4" }} /></button>
+                        {role !== ROLES.MEMBER && (
+                          <button className="btn-icon" title="Delete" onClick={async () => { if (!confirm("Delete this machine?")) return; const res = await fetch(`/api/machines/${m.id}`, { method: "DELETE" }); if (res.ok) startTransition(() => router.refresh()); }}>
+                            <Trash2 size={15} style={{ color: "#ef4444" }} />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
