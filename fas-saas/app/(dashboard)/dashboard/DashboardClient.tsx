@@ -97,7 +97,7 @@ export default function DashboardClient({ stats }: { stats: any }) {
           <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text-primary)" }}>
             Todays Production Overview
           </h2>
-          <button className="btn-primary" style={{ gap: 6 }}>
+          <button className="btn-primary" style={{ gap: 6 }} onClick={() => window.print()}>
             <Printer size={15} />
             Print Production
           </button>

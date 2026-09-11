@@ -225,3 +225,38 @@ body {
   transition: all 0.15s;
 }
 .btn-icon:hover { background: var(--bg-table-hover); color: var(--text-primary); }
+
+/* ── Print Styles ──────────────────────────────────────────────────────── */
+@media print {
+  /* Hide sidebar, topbar, and all buttons */
+  aside, header, .btn-primary, .btn-secondary, .btn-ghost, .btn-icon {
+    display: none !important;
+  }
+  /* Ensure main content takes full width and height with no scrollbars */
+  body, html, main {
+    background: white !important;
+    color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow: visible !important;
+  }
+  /* Hide background colors in cards for better printing */
+  .card {
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+    background: white !important;
+    break-inside: avoid;
+  }
+  /* Ensure data table prints well */
+  .data-table th, .data-table td {
+    border-bottom: 1px solid #ddd !important;
+    color: black !important;
+  }
+  /* Force background graphics to print (e.g. donut charts or badges) */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
