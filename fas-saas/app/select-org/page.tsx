@@ -1,7 +1,10 @@
 import { OrganizationList } from "@clerk/nextjs";
 import { Building2 } from "lucide-react";
+import { getAuthContext } from "@/lib/auth";
+import { ROLES } from "@/lib/roles";
 
-export default function SelectOrgPage() {
+export default async function SelectOrgPage() {
+  const { role } = await getAuthContext();
   return (
     <div
       style={{
@@ -61,6 +64,13 @@ export default function SelectOrgPage() {
         hidePersonal
         afterSelectOrganizationUrl="/dashboard"
         afterCreateOrganizationUrl="/dashboard"
+        appearance={{
+          elements: {
+            ...(role !== ROLES.SAAS_ADMIN && {
+              organizationListCreateOrganizationActionButton: { display: "none" },
+            }),
+          }
+        }}
       />
 
       {/* Info note */}

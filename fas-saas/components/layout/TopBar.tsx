@@ -181,6 +181,10 @@ export default function TopBar({ title, subtitle, role }: { title: string; subti
                 background: "var(--bg-card)", fontSize: 13,
                 fontWeight: 600, color: "var(--text-primary)",
               },
+              ...(role !== ROLES.SAAS_ADMIN && {
+                organizationListCreateOrganizationActionButton: { display: "none" },
+                organizationSwitcherPopoverActionButton__createOrganization: { display: "none" },
+              }),
             },
           }}
         />
