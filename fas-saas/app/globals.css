@@ -181,6 +181,22 @@ body {
 }
 .btn-primary:hover { background: #4f46e5; }
 
+.btn-secondary {
+  background: var(--bg-page);
+  color: var(--text-secondary);
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s;
+}
+.btn-secondary:hover { background: var(--bg-table-hover); color: var(--text-primary); }
+
 .btn-ghost {
   background: transparent;
   color: var(--text-secondary);
