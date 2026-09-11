@@ -174,14 +174,14 @@ export default function Sidebar({ role }: { role: Role }) {
             </div>
             <Link
               href="/saas-admin"
-              className={`nav-link${pathname.startsWith("/saas-admin") ? " active" : ""}`}
+              className={`nav-link${pathname === "/saas-admin" ? " active" : ""}`}
             >
               <Globe size={17} style={{ flexShrink: 0 }} />
               <span>All Organizations</span>
             </Link>
             <Link
-              href="/members"
-              className={`nav-link${pathname.startsWith("/members") ? " active" : ""}`}
+              href="/saas-admin/members"
+              className={`nav-link${pathname.startsWith("/saas-admin/members") ? " active" : ""}`}
             >
               <Users size={17} style={{ flexShrink: 0 }} />
               <span>All Members</span>
