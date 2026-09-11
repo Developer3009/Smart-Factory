@@ -1,5 +1,5 @@
 // Prisma Schema — Factory Management System
-// SQLite datasource for local dev (swap to postgresql for Railway/production)
+// PostgreSQL datasource for local and production environments.
 
 generator client {
   provider = "prisma-client-js"

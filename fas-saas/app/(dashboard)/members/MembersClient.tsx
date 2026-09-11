@@ -24,9 +24,10 @@ interface Props {
   members: Member[];
   role: Role;        // caller's role
   orgId: string;
+  loadError?: string;
 }
 
-export default function MembersClient({ members: initialMembers, role, orgId }: Props) {
+export default function MembersClient({ members: initialMembers, role, orgId, loadError = "" }: Props) {
   const [members, setMembers] = useState<Member[]>(initialMembers);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -109,6 +110,12 @@ export default function MembersClient({ members: initialMembers, role, orgId }: 
           </button>
         )}
       </div>
+
+      {loadError && (
+        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "12px 16px", fontSize: 13, color: "#b91c1c" }}>
+          {loadError}
+        </div>
+      )}
 
       {/* Add Member Form Modal */}
       {showForm && (
