@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthContext } from "@/lib/auth";
 import { ROLES } from "@/lib/roles";
-import { clerkClient } from "@clerk/nextjs/server";
 
 // GET /api/members — list members of the current org
 export async function GET() {
@@ -37,13 +36,6 @@ export async function POST(req: NextRequest) {
 
     // SaaS admin can specify any org, org admin uses their own orgId
     const targetOrgId = ctx.isSaasAdmin && organizationId ? organizationId : ctx.orgId;
-    const targetOrganization = await prisma.organization.findUnique({
-      where: { id: targetOrgId },
-      select: { id: true, clerkOrgId: true },
-    });
-    if (!targetOrganization) {
-      return NextResponse.json({ error: "Organization not found" }, { status: 404 });
-    }
 
     // Validate role: ORG_ADMIN can only add OPERATOR, SUPERVISOR, PLANT_MANAGER
     // SAAS_ADMIN can also add ADMIN role
@@ -52,7 +44,6 @@ export async function POST(req: NextRequest) {
       : ["PLANT_MANAGER", "SUPERVISOR", "OPERATOR"];
 
     const memberRole = role && allowedRoles.includes(role) ? role : "OPERATOR";
-    const clerkRole = memberRole === "ADMIN" ? "org:admin" : "org:member";
 
     // Check for duplicate
     const existing = await prisma.orgUser.findFirst({
@@ -62,39 +53,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "User already exists in this organization" }, { status: 409 });
     }
 
-    if (!targetOrganization.clerkOrgId) {
-      return NextResponse.json({ error: "Organization is not connected to Clerk" }, { status: 409 });
-    }
-
-    const clerk = await clerkClient();
-    await clerk.organizations.createOrganizationMembership({
-      organizationId: targetOrganization.clerkOrgId,
-      userId: clerkUserId,
-      role: clerkRole,
+    const member = await prisma.orgUser.create({
+      data: {
+        organizationId: targetOrgId,
+        clerkUserId,
+        name,
+        email: email || null,
+        role: memberRole,
+      },
     });
-
-    let member;
-    try {
-      member = await prisma.orgUser.create({
-        data: {
-          organizationId: targetOrgId,
-          clerkUserId,
-          name,
-          email: email || null,
-          role: memberRole,
-        },
-      });
-    } catch (error) {
-      try {
-        await clerk.organizations.deleteOrganizationMembership({
-          organizationId: targetOrganization.clerkOrgId,
-          userId: clerkUserId,
-        });
-      } catch {
-        // Preserve the original database error if cleanup also fails.
-      }
-      throw error;
-    }
 
     return NextResponse.json(member, { status: 201 });
   } catch (err: any) {

@@ -1,18 +1,7 @@
-"use client";
-
-import { useOrganizationList } from "@clerk/nextjs";
+import { OrganizationList } from "@clerk/nextjs";
 import { Building2 } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 export default function SelectOrgPage() {
-  const router = useRouter();
-  const { isLoaded, setActive, userMemberships } = useOrganizationList({ userMemberships: true });
-
-  async function selectOrganization(organizationId: string) {
-    await setActive?.({ organization: organizationId });
-    router.push("/dashboard");
-  }
-
   return (
     <div
       style={{
@@ -67,33 +56,12 @@ export default function SelectOrgPage() {
         </p>
       </div>
 
-      {/* Only existing memberships are shown. Tenant creation is platform-admin only. */}
-      <div style={{ width: "min(100%, 420px)", display: "flex", flexDirection: "column", gap: 10 }}>
-        {!isLoaded || userMemberships.isLoading ? (
-          <div style={{ color: "#cbd5e1", textAlign: "center", padding: 24 }}>Loading your organizations...</div>
-        ) : userMemberships.data?.length ? (
-          userMemberships.data.map((membership) => (
-            <button
-              key={membership.id}
-              onClick={() => selectOrganization(membership.organization.id)}
-              style={{
-                display: "flex", alignItems: "center", gap: 14, width: "100%",
-                padding: "16px 18px", borderRadius: 10, textAlign: "left",
-                background: "rgba(255,255,255,0.07)", border: "1px solid rgba(148,163,184,0.25)",
-                color: "white", cursor: "pointer",
-              }}
-            >
-              <Building2 size={18} color="#a5b4fc" />
-              <span style={{ flex: 1, fontSize: 14, fontWeight: 700 }}>{membership.organization.name}</span>
-              <span style={{ fontSize: 12, color: "#a5b4fc" }}>Open</span>
-            </button>
-          ))
-        ) : (
-          <div style={{ color: "#cbd5e1", textAlign: "center", padding: 24 }}>
-            You are not assigned to an organization yet. Contact your platform administrator.
-          </div>
-        )}
-      </div>
+      {/* Clerk OrganizationList — shows all orgs the user is a member of */}
+      <OrganizationList
+        hidePersonal
+        afterSelectOrganizationUrl="/dashboard"
+        afterCreateOrganizationUrl="/dashboard"
+      />
 
       {/* Info note */}
       <div
@@ -107,9 +75,9 @@ export default function SelectOrgPage() {
         }}
       >
         <p style={{ fontSize: 12, color: "#a5b4fc", margin: 0, lineHeight: 1.6 }}>
-          <strong>Organization access:</strong> Your factory data is isolated
-          and visible only to members of your selected organization. Contact
-          your platform administrator for access changes.
+          🔒 <strong>Multi-tenant SaaS:</strong> Each organization's data is
+          completely isolated. Your factory data is only visible to members of
+          your organization.
         </p>
       </div>
     </div>

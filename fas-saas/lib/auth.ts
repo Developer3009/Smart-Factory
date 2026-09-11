@@ -4,7 +4,6 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { prisma } from "./prisma";
 import { ROLES, Role, clerkOrgRoleToAppRole } from "./roles";
 
 export const DEMO_ORG_ID = "demo-org-1";
@@ -68,29 +67,11 @@ export async function getAuthContext(): Promise<AuthContext> {
   // This prevents data leakage and ensures the user belongs to the right tenant.
   if (!orgId) redirect("/select-org");
 
-  let localOrganizationId: string | undefined;
-  try {
-    const organization = await prisma.organization.findFirst({
-      where: { clerkOrgId: orgId },
-      select: { id: true },
-    });
-    localOrganizationId = organization?.id ?? (await prisma.organization.findUnique({
-      where: { id: orgId },
-      select: { id: true },
-    }))?.id;
-  } catch (error) {
-    if (process.env.NODE_ENV === "production") throw error;
-    // Keep local development usable when the optional remote database is offline.
-    localOrganizationId = orgId;
-  }
-
-  if (!localOrganizationId) redirect("/select-org");
-
   const role = clerkOrgRoleToAppRole(orgRole ?? undefined);
 
   return {
     userId,
-    orgId: localOrganizationId,
+    orgId,
     role,
     isSaasAdmin: false,
     isOrgAdmin: role === ROLES.ORG_ADMIN,
@@ -146,19 +127,7 @@ export async function getCurrentOrgId(): Promise<string> {
       // Otherwise return demo org so dashboard doesn't crash
       return orgId ?? process.env.NEXT_PUBLIC_ORG_ID ?? DEMO_ORG_ID;
     }
-    if (orgId) {
-      const organization = await prisma.organization.findFirst({
-        where: { clerkOrgId: orgId },
-        select: { id: true },
-      });
-      if (organization) return organization.id;
-
-      const legacyOrganization = await prisma.organization.findUnique({
-        where: { id: orgId },
-        select: { id: true },
-      });
-      if (legacyOrganization) return legacyOrganization.id;
-    }
+    if (orgId) return orgId;
     if (userId) return userId; // solo user fallback
   } catch {
     // Outside Clerk context (seed scripts, etc.)

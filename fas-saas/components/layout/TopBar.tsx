@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Search, Sun, Moon, Bell, X } from "lucide-react";
-import { UserButton, OrganizationSwitcher, useOrganization } from "@clerk/nextjs";
+import { UserButton, OrganizationSwitcher } from "@clerk/nextjs";
 import { Role, ROLES } from "@/lib/roles";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 const SEARCH_ITEMS = [
   { label: "Dashboard",     href: "/dashboard",     keywords: "home overview stats" },
@@ -27,7 +28,6 @@ export default function TopBar({ title, subtitle, role }: { title: string; subti
   const [showResults, setShowResults] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const { organization, isLoaded: organizationLoaded } = useOrganization();
 
   useEffect(() => {
     const stored = localStorage.getItem("theme");
@@ -168,39 +168,22 @@ export default function TopBar({ title, subtitle, role }: { title: string; subti
 
       {/* Right: Actions */}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        {role === ROLES.SAAS_ADMIN ? (
-          <OrganizationSwitcher
-            hidePersonal
-            afterSelectOrganizationUrl="/dashboard"
-            afterCreateOrganizationUrl="/dashboard"
-            appearance={{
-              elements: {
-                rootBox: { display: "flex", alignItems: "center" },
-                organizationSwitcherTrigger: {
-                  padding: "6px 10px", borderRadius: 8,
-                  border: "1px solid var(--border-color)",
-                  background: "var(--bg-card)", fontSize: 13,
-                  fontWeight: 600, color: "var(--text-primary)",
-                },
+        <OrganizationSwitcher
+          hidePersonal
+          afterSelectOrganizationUrl="/dashboard"
+          afterCreateOrganizationUrl="/dashboard"
+          appearance={{
+            elements: {
+              rootBox: { display: "flex", alignItems: "center" },
+              organizationSwitcherTrigger: {
+                padding: "6px 10px", borderRadius: 8,
+                border: "1px solid var(--border-color)",
+                background: "var(--bg-card)", fontSize: 13,
+                fontWeight: 600, color: "var(--text-primary)",
               },
-            }}
-          />
-        ) : (
-          <div
-            title="Your active organization"
-            style={{
-              display: "flex", alignItems: "center", gap: 8,
-              maxWidth: 220, padding: "7px 11px", borderRadius: 8,
-              border: "1px solid var(--border-color)", background: "var(--bg-card)",
-              color: "var(--text-primary)", fontSize: 13, fontWeight: 600,
-            }}
-          >
-            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", flexShrink: 0 }} />
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {organizationLoaded ? organization?.name ?? "Organization" : "Loading organization..."}
-            </span>
-          </div>
-        )}
+            },
+          }}
+        />
 
         <button className="btn-icon" title={dark ? "Light mode" : "Dark mode"} onClick={toggleTheme}>
           {dark ? <Sun size={17} /> : <Moon size={17} />}
