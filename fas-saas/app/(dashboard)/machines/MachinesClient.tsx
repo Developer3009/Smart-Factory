@@ -1,11 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { Download, Plus, Search, Eye, ChevronLeft, ChevronRight } from "lucide-react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Download, Plus, Search, Eye, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { ROLES } from "@/lib/roles";
 
 const PAGE_SIZE = 10;
 
-export default function MachinesClient({ machines }: { machines: any[] }) {
+export default function MachinesClient({ machines, role = "MEMBER" }: { machines: any[]; role?: string }) {
+  const router = useRouter();
+  const [, startTransition] = useTransition();
+  const [selectedMachine, setSelectedMachine] = useState<any | null>(null);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
@@ -148,3 +153,4 @@ export default function MachinesClient({ machines }: { machines: any[] }) {
     </div>
   );
 }
+

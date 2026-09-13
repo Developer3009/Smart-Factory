@@ -3,23 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
-  Cpu,
-  Package,
-  Factory,
-  Users,
-  ShoppingBag,
-  ClipboardList,
-  Truck,
-  Layers,
-  ShoppingCart,
-  Settings,
-  Cog,
-  UserCog,
-  Zap,
-  Shield,
-  Building2,
-  Globe,
+  LayoutDashboard, Cpu, Package, Factory, Users, ShoppingBag,
+  ClipboardList, Truck, Layers, ShoppingCart, Settings, Cog,
+  UserCog, Zap, Shield, Building2, Globe,
+  ClipboardCheck, Wrench, CalendarDays, TestTube,
 } from "lucide-react";
 import { Role, ROLES } from "@/lib/roles";
 
@@ -48,7 +35,10 @@ const OPS_NAV = [
   { label: "Production",    href: "/production",    icon: Factory,       roles: ["ORG_ADMIN", "MEMBER"] },
   { label: "Inventory",     href: "/inventory",     icon: Package,       roles: ["ORG_ADMIN", "MEMBER"] },
   { label: "Raw Materials", href: "/raw-materials", icon: Layers,        roles: ["ORG_ADMIN", "MEMBER"] },
-  { label: "Orders",        href: "/orders",        icon: ClipboardList, roles: ["ORG_ADMIN", "MEMBER"] },
+  { label: "Orders",          href: "/orders",       icon: ClipboardList,  roles: ["ORG_ADMIN", "MEMBER"] },
+  { label: "Quality Control", href: "/qc",           icon: ClipboardCheck, roles: ["ORG_ADMIN", "MEMBER"] },
+  { label: "Maintenance",     href: "/maintenance",  icon: Wrench,         roles: ["ORG_ADMIN", "MEMBER"] },
+  { label: "Shifts",          href: "/shifts",       icon: CalendarDays,   roles: ["ORG_ADMIN"] },
 ];
 
 // ── Section 3: Admin Business Tools (ORG_ADMIN only)
@@ -221,3 +211,5 @@ export default function Sidebar({ role }: { role: Role }) {
     </aside>
   );
 }
+
+

@@ -1,5 +1,5 @@
-// Prisma Schema — Factory Management System
-// SQLite datasource for local dev (swap to postgresql for Railway/production)
+// Prisma Schema — Factory Management System (Extended)
+// Production: Supabase PostgreSQL via DATABASE_URL + DIRECT_URL
 
 generator client {
   provider = "prisma-client-js"
@@ -17,70 +17,327 @@ model Organization {
   id               String   @id @default(cuid())
   clerkOrgId       String?  @unique
   name             String
-  plan             String   @default("STARTER") // STARTER | PRO | ENTERPRISE
+  plan             String   @default("STARTER")     // STARTER | PRO | ENTERPRISE
   stripeCustomerId String?
+  billingEmail     String?
+  maxUsers         Int      @default(10)
+  isActive         Boolean  @default(true)
+  featureFlags     Json?                             // { "qc": true, "maintenance": true }
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  plants           Plant[]
-  users            OrgUser[]
-  products         Product[]
-  workOrders       WorkOrder[]
-  inventoryItems   InventoryItem[]
-  downtimeCodes    DowntimeReasonCode[]
-  customers        Customer[]
-  vendors          Vendor[]
-  purchaseOrders   PurchaseOrder[]
+  plants               Plant[]
+  users                OrgUser[]
+  products             Product[]
+  workOrders           WorkOrder[]
+  inventoryItems       InventoryItem[]
+  downtimeCodes        DowntimeReasonCode[]
+  customers            Customer[]
+  vendors              Vendor[]
+  purchaseOrders       PurchaseOrder[]
+  roles                Role[]
+  shifts               Shift[]
+  notifications        Notification[]
+  maintenanceSchedules MaintenanceSchedule[]
+
+  @@index([isActive])
 }
 
-// ─── Plant ────────────────────────────────────────────────────────────────────
+// ─── Plant / Factory ──────────────────────────────────────────────────────────
 
 model Plant {
   id             String   @id @default(cuid())
   organizationId String
   name           String
   location       String?
+  timezone       String   @default("Asia/Kolkata")
+  isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
 
-  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  machines       Machine[]
-  workOrders     WorkOrder[]
-  inventoryItems InventoryItem[]
+  organization         Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  machines             Machine[]
+  workOrders           WorkOrder[]
+  inventoryItems       InventoryItem[]
+  shifts               Shift[]
+  userFactoryRoles     UserFactoryRole[]
+  qcInspections        QcInspection[]
+  maintenanceTickets   MaintenanceTicket[]
+  maintenanceSchedules MaintenanceSchedule[]
+
+  @@index([organizationId])
 }
 
 // ─── Machine ──────────────────────────────────────────────────────────────────
 
 model Machine {
-  id             String   @id @default(cuid())
-  organizationId String
-  plantId        String
-  name           String
-  description    String?
-  machineType    String   @default("General")
-  status         String   @default("IDLE") // RUNNING | IDLE | DOWN
-  createdAt      DateTime @default(now())
+  id              String    @id @default(cuid())
+  organizationId  String
+  plantId         String
+  name            String
+  description     String?
+  machineType     String    @default("General")
+  protocol        String    @default("MANUAL")       // OPC-UA | Modbus | MTConnect | MANUAL
+  ipAddress       String?
+  status          String    @default("IDLE")          // ACTIVE | IDLE | STOPPED
+  lastHeartbeatAt DateTime?
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
 
-  plant          Plant           @relation(fields: [plantId], references: [id], onDelete: Cascade)
-  productionLogs ProductionLog[]
-  downtimeEvents DowntimeEvent[]
+  plant                Plant                @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  productionLogs       ProductionLog[]
+  downtimeEvents       DowntimeEvent[]
+  statusLogs           MachineStatusLog[]
+  maintenanceTickets   MaintenanceTicket[]
+  maintenanceSchedules MaintenanceSchedule[]
+
+  @@index([organizationId, status])
+  @@index([plantId])
+}
+
+// ─── Machine Status Log (immutable audit — for OEE) ──────────────────────────
+
+model MachineStatusLog {
+  id        String   @id @default(cuid())
+  machineId String
+  status    String                                   // ACTIVE | IDLE | STOPPED
+  source    String   @default("MANUAL")              // MQTT | MANUAL | HEARTBEAT | TEST
+  changedAt DateTime @default(now())
+  notes     String?
+
+  machine   Machine  @relation(fields: [machineId], references: [id], onDelete: Cascade)
+
+  @@index([machineId, changedAt])
 }
 
 // ─── OrgUser ──────────────────────────────────────────────────────────────────
 
 model OrgUser {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   organizationId String
   clerkUserId    String
-  name           String   @default("User")
+  name           String    @default("User")
   email          String?
-  role           String   @default("OPERATOR") // ADMIN | PLANT_MANAGER | SUPERVISOR | OPERATOR
-  createdAt      DateTime @default(now())
+  role           String    @default("MEMBER")        // legacy — prefer UserFactoryRole
+  loginType      String    @default("EMAIL")         // EMAIL | PIN | RFID
+  pin            String?                             // bcrypt-hashed 6-digit PIN
+  rfidTag        String?
+  isActive       Boolean   @default(true)
+  deletedAt      DateTime?                           // soft-delete
+  createdAt      DateTime  @default(now())
 
-  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  productionLogs ProductionLog[]
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  productionLogs   ProductionLog[]
+  factoryRoles     UserFactoryRole[]
+  shiftAssignments ShiftAssignment[]
+
+  @@index([organizationId])
+  @@index([clerkUserId])
 }
 
-// ─── Product ──────────────────────────────────────────────────────────────────
+// ─── RBAC: Roles ─────────────────────────────────────────────────────────────
+
+model Role {
+  id             String   @id @default(cuid())
+  organizationId String?                            // null = system role
+  name           String
+  description    String?
+  isCustom       Boolean  @default(false)
+  isSystem       Boolean  @default(false)           // true = cannot delete/modify
+  createdAt      DateTime @default(now())
+
+  organization     Organization?     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  permissions      RolePermission[]
+  userFactoryRoles UserFactoryRole[]
+
+  @@index([organizationId])
+}
+
+// ─── RBAC: Permissions ───────────────────────────────────────────────────────
+
+model Permission {
+  id     String @id @default(cuid())
+  module String                                     // production | inventory | machines | qc | maintenance | ...
+  action String                                     // view | edit | delete | approve | inspect | flag | ...
+  label  String?
+
+  roles  RolePermission[]
+
+  @@unique([module, action])
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+// ─── Per-Factory Role Assignment ─────────────────────────────────────────────
+
+model UserFactoryRole {
+  id        String   @id @default(cuid())
+  userId    String
+  roleId    String
+  factoryId String
+  grantedAt DateTime @default(now())
+  grantedBy String?
+
+  user      OrgUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  factory   Plant    @relation(fields: [factoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId, factoryId])
+  @@index([userId])
+  @@index([factoryId])
+}
+
+// ─── Shifts ──────────────────────────────────────────────────────────────────
+
+model Shift {
+  id             String   @id @default(cuid())
+  organizationId String
+  plantId        String
+  name           String
+  startTime      String                             // "06:00"
+  endTime        String                             // "14:00"
+  createdAt      DateTime @default(now())
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plant        Plant             @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  assignments  ShiftAssignment[]
+  workOrders   WorkOrder[]
+
+  @@index([plantId])
+}
+
+model ShiftAssignment {
+  id        String   @id @default(cuid())
+  userId    String
+  shiftId   String
+  workDate  DateTime
+  notes     String?
+  createdAt DateTime @default(now())
+
+  user      OrgUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shift     Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, shiftId, workDate])
+  @@index([shiftId, workDate])
+}
+
+// ─── Quality Control ─────────────────────────────────────────────────────────
+
+model QcInspection {
+  id             String   @id @default(cuid())
+  organizationId String
+  plantId        String
+  workOrderId    String?
+  inspectorId    String?
+  inspectionType String   @default("INLINE")        // INLINE | FINAL | INCOMING
+  result         String?                            // PASS | FAIL | CONDITIONAL
+  sampleSize     Int      @default(1)
+  defectsFound   Int      @default(0)
+  notes          String?
+  inspectedAt    DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  plant           Plant            @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  workOrder       WorkOrder?       @relation(fields: [workOrderId], references: [id])
+  nonConformances NonConformance[]
+
+  @@index([organizationId, inspectedAt])
+  @@index([plantId])
+}
+
+model NonConformance {
+  id               String    @id @default(cuid())
+  inspectionId     String
+  description      String
+  severity         String    @default("MEDIUM")     // LOW | MEDIUM | HIGH | CRITICAL
+  status           String    @default("OPEN")        // OPEN | UNDER_REVIEW | CLOSED
+  rootCause        String?
+  correctiveAction String?
+  resolvedAt       DateTime?
+  createdAt        DateTime  @default(now())
+
+  inspection QcInspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+
+  @@index([status, severity])
+}
+
+// ─── Maintenance ─────────────────────────────────────────────────────────────
+
+model MaintenanceTicket {
+  id             String    @id @default(cuid())
+  organizationId String
+  plantId        String
+  machineId      String?
+  title          String
+  description    String?
+  type           String    @default("BREAKDOWN")    // BREAKDOWN | PREVENTIVE | INSPECTION
+  priority       String    @default("MEDIUM")       // LOW | MEDIUM | HIGH | CRITICAL
+  status         String    @default("OPEN")          // OPEN | IN_PROGRESS | RESOLVED | CLOSED
+  assignedToId   String?
+  estimatedHrs   Float?
+  actualHrs      Float?
+  resolvedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  plant   Plant    @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  machine Machine? @relation(fields: [machineId], references: [id])
+
+  @@index([organizationId, status])
+  @@index([machineId])
+}
+
+model MaintenanceSchedule {
+  id              String    @id @default(cuid())
+  organizationId  String
+  plantId         String
+  machineId       String?
+  title           String
+  description     String?
+  frequency       String    @default("MONTHLY")     // DAILY | WEEKLY | MONTHLY | QUARTERLY | ANNUAL
+  nextDueAt       DateTime
+  lastCompletedAt DateTime?
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plant        Plant        @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  machine      Machine?     @relation(fields: [machineId], references: [id])
+
+  @@index([organizationId, nextDueAt])
+}
+
+// ─── Notifications ───────────────────────────────────────────────────────────
+
+model Notification {
+  id             String    @id @default(cuid())
+  organizationId String
+  recipientId    String?
+  recipientEmail String?
+  type           String                             // machine.stopped | low.stock | wo.overdue | qc.failed | invite
+  channel        String    @default("EMAIL")        // EMAIL | SMS | IN_APP
+  subject        String?
+  body           String?
+  status         String    @default("QUEUED")       // QUEUED | SENT | FAILED | BOUNCED
+  jobId          String?
+  sentAt         DateTime?
+  failureReason  String?
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([recipientId])
+}
+
+// ─── Product ─────────────────────────────────────────────────────────────────
 
 model Product {
   id             String   @id @default(cuid())
@@ -91,9 +348,9 @@ model Product {
   unitPrice      Float    @default(0)
   createdAt      DateTime @default(now())
 
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  bomItems       BomItem[]
-  workOrders     WorkOrder[]
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bomItems     BomItem[]
+  workOrders   WorkOrder[]
 }
 
 // ─── Bill of Materials ────────────────────────────────────────────────────────
@@ -105,33 +362,41 @@ model BomItem {
   quantity  Float
   unit      String @default("pcs")
 
-  product   Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
-  item      InventoryItem @relation(fields: [itemId], references: [id])
+  product Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  item    InventoryItem @relation(fields: [itemId], references: [id])
 }
 
-// ─── Work Order ───────────────────────────────────────────────────────────────
+// ─── Work Order ──────────────────────────────────────────────────────────────
 
 model WorkOrder {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   organizationId String
   plantId        String
   productId      String
+  shiftId        String?
   quantity       Int
+  targetQty      Int?
+  defectQty      Int       @default(0)
   dueDate        DateTime
   estimatedHrs   Float?
-  status         String   @default("QUEUED") // QUEUED | IN_PROGRESS | COMPLETED | ON_HOLD
+  status         String    @default("QUEUED")       // QUEUED | IN_PROGRESS | COMPLETED | ON_HOLD
   notes          String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  plant          Plant         @relation(fields: [plantId], references: [id])
-  product        Product       @relation(fields: [productId], references: [id])
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plant          Plant           @relation(fields: [plantId], references: [id])
+  product        Product         @relation(fields: [productId], references: [id])
+  shift          Shift?          @relation(fields: [shiftId], references: [id])
   routingSteps   RoutingStep[]
   productionLogs ProductionLog[]
+  qcInspections  QcInspection[]
+
+  @@index([organizationId, status])
+  @@index([dueDate])
 }
 
-// ─── Routing Step ─────────────────────────────────────────────────────────────
+// ─── Routing Step ────────────────────────────────────────────────────────────
 
 model RoutingStep {
   id           String  @id @default(cuid())
@@ -140,12 +405,12 @@ model RoutingStep {
   description  String
   machineType  String?
   estimatedHrs Float?
-  status       String  @default("PENDING") // PENDING | IN_PROGRESS | COMPLETED
+  status       String  @default("PENDING")          // PENDING | IN_PROGRESS | COMPLETED
 
-  workOrder    WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
 }
 
-// ─── Production Log ───────────────────────────────────────────────────────────
+// ─── Production Log ──────────────────────────────────────────────────────────
 
 model ProductionLog {
   id               String    @id @default(cuid())
@@ -159,12 +424,14 @@ model ProductionLog {
   status           String    @default("IN_PROGRESS") // IN_PROGRESS | PAUSED | COMPLETED
   notes            String?
 
-  workOrder        WorkOrder @relation(fields: [workOrderId], references: [id])
-  machine          Machine   @relation(fields: [machineId], references: [id])
-  operator         OrgUser   @relation(fields: [operatorId], references: [id])
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id])
+  machine   Machine   @relation(fields: [machineId], references: [id])
+  operator  OrgUser   @relation(fields: [operatorId], references: [id])
+
+  @@index([organizationId, startTime])
 }
 
-// ─── Downtime ─────────────────────────────────────────────────────────────────
+// ─── Downtime ────────────────────────────────────────────────────────────────
 
 model DowntimeEvent {
   id             String    @id @default(cuid())
@@ -175,8 +442,8 @@ model DowntimeEvent {
   endTime        DateTime?
   notes          String?
 
-  machine        Machine             @relation(fields: [machineId], references: [id])
-  reasonCode     DowntimeReasonCode? @relation(fields: [reasonCodeId], references: [id])
+  machine    Machine             @relation(fields: [machineId], references: [id])
+  reasonCode DowntimeReasonCode? @relation(fields: [reasonCodeId], references: [id])
 }
 
 model DowntimeReasonCode {
@@ -186,11 +453,11 @@ model DowntimeReasonCode {
   description    String
   createdAt      DateTime @default(now())
 
-  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  events         DowntimeEvent[]
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  events       DowntimeEvent[]
 }
 
-// ─── Inventory ────────────────────────────────────────────────────────────────
+// ─── Inventory ───────────────────────────────────────────────────────────────
 
 model InventoryItem {
   id             String   @id @default(cuid())
@@ -198,32 +465,34 @@ model InventoryItem {
   plantId        String?
   sku            String
   name           String
-  type           String   @default("RAW_MATERIAL") // RAW_MATERIAL | FINISHED_GOOD | WIP
+  type           String   @default("RAW_MATERIAL")  // RAW_MATERIAL | FINISHED_GOOD | WIP
   quantityOnHand Float    @default(0)
   reorderPoint   Float    @default(0)
   unit           String   @default("pcs")
   unitCost       Float    @default(0)
   createdAt      DateTime @default(now())
 
-  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  plant          Plant?              @relation(fields: [plantId], references: [id])
-  movements      InventoryMovement[]
-  bomItems       BomItem[]
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plant        Plant?              @relation(fields: [plantId], references: [id])
+  movements    InventoryMovement[]
+  bomItems     BomItem[]
+
+  @@index([organizationId])
 }
 
 model InventoryMovement {
   id        String   @id @default(cuid())
   itemId    String
   quantity  Float
-  type      String   // RECEIPT | CONSUMPTION | ADJUSTMENT
+  type      String                                   // RECEIPT | CONSUMPTION | ADJUSTMENT
   reference String?
   notes     String?
   timestamp DateTime @default(now())
 
-  item      InventoryItem @relation(fields: [itemId], references: [id])
+  item InventoryItem @relation(fields: [itemId], references: [id])
 }
 
-// ─── Customers & Sales ────────────────────────────────────────────────────────
+// ─── Customers & Sales ───────────────────────────────────────────────────────
 
 model Customer {
   id             String   @id @default(cuid())
@@ -234,8 +503,8 @@ model Customer {
   address        String?
   createdAt      DateTime @default(now())
 
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  orders         SalesOrder[]
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  orders       SalesOrder[]
 }
 
 model SalesOrder {
@@ -245,10 +514,10 @@ model SalesOrder {
   status     String   @default("PENDING")
   createdAt  DateTime @default(now())
 
-  customer   Customer @relation(fields: [customerId], references: [id])
+  customer Customer @relation(fields: [customerId], references: [id])
 }
 
-// ─── Vendors & Purchase ───────────────────────────────────────────────────────
+// ─── Vendors & Purchase ──────────────────────────────────────────────────────
 
 model Vendor {
   id             String   @id @default(cuid())
@@ -263,13 +532,17 @@ model Vendor {
 }
 
 model PurchaseOrder {
-  id             String   @id @default(cuid())
-  organizationId String
-  vendorId       String
-  amount         Float
-  status         String   @default("PENDING") // PENDING | APPROVED | RECEIVED | CANCELLED
-  createdAt      DateTime @default(now())
+  id               String    @id @default(cuid())
+  organizationId   String
+  vendorId         String
+  amount           Float
+  status           String    @default("PENDING")    // PENDING | APPROVED | RECEIVED | CANCELLED
+  notes            String?
+  expectedDelivery DateTime?
+  createdAt        DateTime  @default(now())
 
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  vendor         Vendor       @relation(fields: [vendorId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vendor       Vendor       @relation(fields: [vendorId], references: [id])
+
+  @@index([organizationId, status])
 }

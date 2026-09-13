@@ -2,17 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentOrgId } from "@/lib/tenant";
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const orgId = await getCurrentOrgId();
     const body = await req.json();
 
     // Verify ownership
-    const existing = await prisma.purchaseOrder.findFirst({ where: { id: params.id, organizationId: orgId } });
+    const existing = await prisma.purchaseOrder.findFirst({ where: { id: id, organizationId: orgId } });
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     const updated = await prisma.purchaseOrder.update({
-      where: { id: params.id },
+      where: { id: id },
       data: { status: body.status },
       include: { vendor: true },
     });
@@ -22,14 +23,20 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const orgId = await getCurrentOrgId();
-    const existing = await prisma.purchaseOrder.findFirst({ where: { id: params.id, organizationId: orgId } });
+    const existing = await prisma.purchaseOrder.findFirst({ where: { id: id, organizationId: orgId } });
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    await prisma.purchaseOrder.delete({ where: { id: params.id } });
+    await prisma.purchaseOrder.delete({ where: { id: id } });
     return NextResponse.json({ ok: true });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+
+
+
+
+
