@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState, Fragment } from "react";
 import {
   Building2, Users, LogIn, Activity, Server, AlertTriangle,
   Shield, UserPlus, X, Plus, ChevronDown, ChevronUp, Key, BarChart2
@@ -169,7 +169,7 @@ export default function SaasAdminDashboard({
             <thead><tr><th>Organization</th><th>Plan</th><th>Members</th><th>Plants</th><th>Work Orders</th><th>Created</th></tr></thead>
             <tbody>
               {organizations.map(org => (
-                <>
+                <Fragment key={org.id}>
                   <tr key={org.id} style={{ cursor: "pointer" }} onClick={() => setExpandedOrg(expandedOrg === org.id ? null : org.id)}>
                     <td><div style={{ fontWeight: 600 }}>{org.name}</div><div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "monospace" }}>{org.id}</div></td>
                     <td><span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: (PLAN_COLOR[org.plan] ?? "#9ca3af") + "20", color: PLAN_COLOR[org.plan] ?? "#9ca3af" }}>{org.plan}</span></td>
@@ -207,7 +207,7 @@ export default function SaasAdminDashboard({
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>
@@ -352,3 +352,4 @@ export default function SaasAdminDashboard({
     </div>
   );
 }
+

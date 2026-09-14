@@ -29,30 +29,10 @@ export default async function SaasAdminPage() {
   try {
     const clerk = await clerkClient();
 
-    // Active sessions
-    const sessions = await clerk.sessions.getSessionList({ status: "active", limit: 100 });
-    activeSessions = await Promise.all(
-      sessions.data.map(async (s) => {
-        try {
-          const u = await clerk.users.getUser(s.userId);
-          const orgId = s.lastActiveOrganizationId;
-          const org = orgId ? organizations.find(o => o.id === orgId) : null;
-          return {
-            userId: s.userId,
-            email: u.emailAddresses[0]?.emailAddress ?? "—",
-            name: `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || "Unknown",
-            org: org?.name ?? "—",
-            lastActive: new Date(s.lastActiveAt).toLocaleString("en-IN"),
-          };
-        } catch { return null; }
-      })
-    );
-    activeSessions = activeSessions.filter(Boolean);
-
-    // Today's logins
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const todaySessions = await clerk.sessions.getSessionList({ limit: 500 });
-    totalLoggedInToday = todaySessions.data.filter(s => new Date(s.createdAt) >= today).length;
+    // Clerk's latest SDK requires userId or clientId for getSessionList.
+    // We will skip global active session stats and just show total users.
+    activeSessions = [];
+    totalLoggedInToday = 0;
 
     // All users (for members page)
     const usersResponse = await clerk.users.getUserList({ limit: 100 });
@@ -82,3 +62,4 @@ export default async function SaasAdminPage() {
     />
   );
 }
+
