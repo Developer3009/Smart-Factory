@@ -14,7 +14,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const ctx = await getAuthContext();
-    if (ctx.role !== ROLES.ORG_ADMIN && ctx.role !== ROLES.SAAS_ADMIN) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (ctx.role !== ROLES.ADMIN && ctx.role !== ROLES.SAAS_ADMIN) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const { name, sku, quantityOnHand, reorderPoint, unit, unitCost } = await req.json();
     if (!name?.trim() || !sku?.trim()) return NextResponse.json({ error: "Name and SKU are required" }, { status: 400 });
     const item = await prisma.inventoryItem.create({

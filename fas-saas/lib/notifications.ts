@@ -1,7 +1,7 @@
 /**
  * lib/notifications.ts
  * Helper to enqueue notifications via BullMQ.
- * All notification sends go through this — NEVER send emails synchronously in a request handler.
+ * All notification sends go through this -- NEVER send emails synchronously in a request handler.
  *
  * Usage:
  *   import { enqueueNotification } from "@/lib/notifications";
@@ -13,7 +13,8 @@ export type NotificationType =
   | "low.stock"
   | "wo.overdue"
   | "qc.failed"
-  | "member.invite";
+  | "member.invite"
+  | "vendor.order";
 
 export interface NotificationPayload {
   type: NotificationType;
@@ -47,12 +48,12 @@ export async function enqueueNotification(payload: NotificationPayload): Promise
     await queue.close();
     redis.disconnect();
   } catch (err) {
-    // Fail silently — notification failure should never break the main request
+    // Fail silently -- notification failure should never break the main request
     console.error("[Notifications] Failed to enqueue:", payload.type, err);
   }
 }
 
-// ── Pre-built notification templates ───────────────────────────────────────────
+// -- Pre-built notification templates ------------------------------------------
 
 export function machineStopped(orgId: string, email: string, machineName: string, plantName: string) {
   return enqueueNotification({
@@ -91,5 +92,26 @@ export function memberInvite(orgId: string, email: string, orgName: string, invi
     recipientEmail: email,
     subject: `You've been invited to ${orgName}`,
     body: `<strong>${inviterName}</strong> has invited you to join <strong>${orgName}</strong> on the Factory Management Platform. Sign in at your dashboard to accept.`,
+  });
+}
+
+export function vendorOrder(orgId: string, email: string, orderId: string, vendorName: string, amount: number) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const confirmUrl = `${baseUrl}/api/vendor-orders/${orderId}?action=confirm`;
+  const declineUrl = `${baseUrl}/api/vendor-orders/${orderId}?action=decline`;
+  return enqueueNotification({
+    type: "vendor.order",
+    organizationId: orgId,
+    recipientEmail: email,
+    subject: `New Purchase Order for Rs.${amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+    body: `
+      <p>Hello <strong>${vendorName}</strong>,</p>
+      <p>You have received a new purchase order for <strong>Rs.${amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</strong>.</p>
+      <p>Please confirm or decline using the buttons below:</p>
+      <div style="margin-top:20px">
+        <a href="${confirmUrl}" style="background:#22c55e;color:white;padding:10px 20px;text-decoration:none;border-radius:5px;font-weight:bold;display:inline-block">Confirm Order</a>
+        <a href="${declineUrl}" style="background:#ef4444;color:white;padding:10px 20px;text-decoration:none;border-radius:5px;font-weight:bold;display:inline-block;margin-left:10px">Decline Order</a>
+      </div>
+    `,
   });
 }

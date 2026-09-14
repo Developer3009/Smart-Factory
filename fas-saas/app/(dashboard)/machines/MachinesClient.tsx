@@ -7,7 +7,7 @@ import { ROLES } from "@/lib/roles";
 
 const PAGE_SIZE = 10;
 
-export default function MachinesClient({ machines, role = "MEMBER" }: { machines: any[]; role?: string }) {
+export default function MachinesClient({ machines, role = "OPERATOR" }: { machines: any[]; role?: string }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [selectedMachine, setSelectedMachine] = useState<any | null>(null);
@@ -104,7 +104,7 @@ export default function MachinesClient({ machines, role = "MEMBER" }: { machines
                     <td>
                       <div style={{ display: "flex", gap: 4 }}>
                         <button className="btn-icon" title="View" onClick={() => setSelectedMachine(m)}><Eye size={15} style={{ color: "#06b6d4" }} /></button>
-                        {role !== ROLES.MEMBER && (
+                        {role !== ROLES.OPERATOR && (
                           <button className="btn-icon" title="Delete" onClick={async () => { if (!confirm("Delete this machine?")) return; const res = await fetch(`/api/machines/${m.id}`, { method: "DELETE" }); if (res.ok) startTransition(() => router.refresh()); }}>
                             <Trash2 size={15} style={{ color: "#ef4444" }} />
                           </button>

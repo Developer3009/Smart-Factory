@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentOrgId } from "@/lib/tenant";
+import { purchaseOrderSchema } from "@/lib/validations";
 
-// GET all purchase orders
 export async function GET() {
   try {
     const orgId = await getCurrentOrgId();
@@ -15,19 +15,23 @@ export async function GET() {
   } catch { return NextResponse.json({ error: "Failed" }, { status: 500 }); }
 }
 
-// POST create purchase order
 export async function POST(req: Request) {
   try {
     const orgId = await getCurrentOrgId();
-    const body = await req.json();
-    if (!body.vendorId || !body.amount) return NextResponse.json({ error: "Vendor and amount required." }, { status: 400 });
+    const body = purchaseOrderSchema.parse(await req.json());
+
+    const vendor = await prisma.vendor.findUnique({ where: { id: body.vendorId } });
+    if (!vendor) return NextResponse.json({ error: "Vendor not found." }, { status: 404 });
+    if (!vendor.email || !vendor.phone) {
+      return NextResponse.json({ error: "Vendor email and phone required before creating an order" }, { status: 400 });
+    }
 
     const order = await prisma.purchaseOrder.create({
       data: {
         organizationId: orgId,
         vendorId: body.vendorId,
-        amount: parseFloat(body.amount),
-        status: body.status ?? "PENDING",
+        amount: body.amount,
+        status: "PENDING",
         notes: body.notes ?? null,
         expectedDelivery: body.expectedDelivery ? new Date(body.expectedDelivery) : null,
       },

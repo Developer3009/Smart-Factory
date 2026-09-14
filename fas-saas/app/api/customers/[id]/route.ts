@@ -7,7 +7,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   try {
     const { id } = await params;
     const ctx = await getAuthContext();
-    if (ctx.role !== ROLES.ORG_ADMIN && ctx.role !== ROLES.SAAS_ADMIN) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (ctx.role !== ROLES.ADMIN && ctx.role !== ROLES.SAAS_ADMIN) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         const customer = await prisma.customer.findUnique({ where: { id } });
     if (!customer) return NextResponse.json({ error: "Not found" }, { status: 404 });
     if (!ctx.isSaasAdmin && customer.organizationId !== ctx.orgId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });

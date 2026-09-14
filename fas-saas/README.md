@@ -1,36 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Smart Factory SaaS (FMS)
+
+A multi-tenant, cloud-based Factory Management System (FMS) built for modern manufacturers. This application handles everything from work orders and inventory management to real-time machine monitoring and Quality Control (QC).
+
+## Architecture
+
+This is a modern, full-stack Next.js application designed for scale and multi-tenancy.
+
+- **Framework**: Next.js 15+ (App Router)
+- **Database**: PostgreSQL (via Supabase or Neon)
+- **ORM**: Prisma
+- **Authentication**: Clerk (B2B Multi-tenant Org implementation)
+- **Styling**: Tailwind CSS & shadcn/ui
+- **Caching & Queues**: Redis (via BullMQ)
+- **Hardware Integration**: MQTT for real-time machine telemetry
+
+### Multi-Tenancy
+Data is strictly isolated per tenant using the `organizationId` foreign key mapped to Clerk Organizations. API routes utilize a central `getCurrentOrgId()` utility to automatically scope all reads and writes to the caller's tenant.
 
 ## Getting Started
 
-First, run the development server:
+### 1. Prerequisites
+- Node.js 18+
+- A PostgreSQL database (e.g. Supabase, Neon, or local Docker)
+- A Clerk account for Authentication
+- Redis (for caching and job queues)
 
+### 2. Environment Setup
+Copy the example environment file and fill in your keys:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env.local
+```
+*Note: See `.env.example` for details on required Clerk, Database, and Redis keys.*
+
+### 3. Database Initialization
+Push the Prisma schema to your database and run the seed script to populate default Roles and Downtime Codes:
+```bash
+npm install
+npx prisma db push
+npm run db:seed
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 4. Running the Development Server
+Start the Next.js development server:
+```bash
+npm run dev
+```
+Navigate to `http://localhost:3000` to view the application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Webhooks
+To keep the database synchronized with Clerk (Users & Organizations), you must set up a Webhook in the Clerk Dashboard pointing to `/api/webhook/clerk` and subscribe to `organization.*`, `organizationMembership.*`, and `user.*` events. Ensure `CLERK_WEBHOOK_SECRET` is set in your environment.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Testing & Validation
+This project uses:
+- **TypeScript** for static type checking
+- **ESLint** for linting
+- **Zod** for API input validation
+- **Vitest** for unit and integration testing
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+To run the test suite:
+```bash
+npm run test
+```

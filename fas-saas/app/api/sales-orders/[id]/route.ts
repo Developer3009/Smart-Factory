@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentOrgId } from "@/lib/tenant";
-import { sendPurchaseOrderEmail } from "@/lib/email";
+import { sendSalesOrderEmail } from "@/lib/email";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -9,21 +9,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const orgId = await getCurrentOrgId();
     const body = await req.json();
 
-    // Verify ownership
-    const existing = await prisma.purchaseOrder.findFirst({ 
-      where: { id: id, organizationId: orgId },
-      include: { vendor: true }
+    // Verify ownership via customer.organizationId
+    const existing = await prisma.salesOrder.findFirst({ 
+      where: { id: id, customer: { organizationId: orgId } },
+      include: { customer: true }
     });
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-    const updated = await prisma.purchaseOrder.update({
+    const updated = await prisma.salesOrder.update({
       where: { id: id },
       data: { status: body.status },
-      include: { vendor: true },
+      include: { customer: true },
     });
 
-    if (body.status === 'APPROVED' || body.status === 'DECLINED' || body.status === 'CANCELLED') {
-      await sendPurchaseOrderEmail(updated, updated.vendor, body.status as any);
+    if (body.status === 'CONFIRMED' || body.status === 'DECLINED') {
+      await sendSalesOrderEmail(updated, updated.customer, body.status as any);
     }
 
     return NextResponse.json(updated);
@@ -36,9 +36,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   try {
     const { id } = await params;
     const orgId = await getCurrentOrgId();
-    const existing = await prisma.purchaseOrder.findFirst({ where: { id: id, organizationId: orgId } });
+    const existing = await prisma.salesOrder.findFirst({ where: { id: id, customer: { organizationId: orgId } } });
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    await prisma.purchaseOrder.delete({ where: { id: id } });
+    await prisma.salesOrder.delete({ where: { id: id } });
     return NextResponse.json({ ok: true });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

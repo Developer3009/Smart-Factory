@@ -10,7 +10,7 @@ export async function DELETE(
   try {
     const { id } = await params;
     const ctx = await getAuthContext();
-    if (ctx.role !== ROLES.ORG_ADMIN && ctx.role !== ROLES.SAAS_ADMIN) {
+    if (ctx.role !== ROLES.ADMIN && ctx.role !== ROLES.SAAS_ADMIN) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     const member = await prisma.orgUser.findUnique({ where: { id } });
@@ -32,7 +32,7 @@ export async function PATCH(
   try {
     const { id } = await params;
     const ctx = await getAuthContext();
-    if (ctx.role !== ROLES.ORG_ADMIN && ctx.role !== ROLES.SAAS_ADMIN) {
+    if (ctx.role !== ROLES.ADMIN && ctx.role !== ROLES.SAAS_ADMIN) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     const { role } = await req.json();

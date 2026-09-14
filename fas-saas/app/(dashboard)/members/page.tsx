@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { requireOrgAdmin } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import MembersClient from "./MembersClient";
 
 export default async function MembersPage() {
-  const { orgId, role } = await requireOrgAdmin();
+  const { orgId, role } = await requireAdmin();
 
   const members = await prisma.orgUser.findMany({
     where: { organizationId: orgId },

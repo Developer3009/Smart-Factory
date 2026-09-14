@@ -4,19 +4,26 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { NextResponse } from "next/server";
 import { ROLES, Role, clerkOrgRoleToAppRole } from "./roles";
 
-export const DEMO_ORG_ID = "demo-org-1";
+export const DEMO_ORG_ID = ""; // Removed insecure fallback
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+import { prisma } from "@/lib/prisma";
 
 export interface AuthContext {
   userId: string;
   orgId: string;       // tenant key — used in every Prisma WHERE clause
-  role: Role;          // SAAS_ADMIN | ORG_ADMIN | MEMBER
+  role: Role;          // SAAS_ADMIN | ADMIN | PLANT_MANAGER | SUPERVISOR | OPERATOR | VIEWER | CUSTOMER
   isSaasAdmin: boolean;
-  isOrgAdmin: boolean;
-  isMember: boolean;
+  isAdmin: boolean;
+  isPlantManager: boolean;
+  isSupervisor: boolean;
+  isOperator: boolean;
+  isViewer: boolean;
+  isCustomer: boolean;
+  customerId?: string;
+  permissions: string[]; // Format: "module:action"
 }
 
 // ─── SaaS Admin Detection ─────────────────────────────────────────────────────
@@ -35,15 +42,6 @@ function checkIsSaasAdmin(userId: string): boolean {
 
 // ─── Core: Get Auth Context ───────────────────────────────────────────────────
 
-/**
- * Returns the full auth context for the current request.
- * Use this in server components and API routes.
- *
- * How it maps to PostgreSQL:
- *   - isSaasAdmin=true  → queries run WITHOUT organizationId filter (sees all rows)
- *   - isOrgAdmin=true   → queries filter by orgId (only their org's rows)
- *   - isMember=true     → same DB filter as admin, but UI hides sensitive data
- */
 export async function getAuthContext(): Promise<AuthContext> {
   const { userId, orgId, orgRole } = await auth();
 
@@ -54,39 +52,116 @@ export async function getAuthContext(): Promise<AuthContext> {
   if (isSaasAdmin) {
     return {
       userId,
-      orgId: orgId ?? DEMO_ORG_ID, // SaaS admin may or may not be in an org
+      orgId: orgId ?? "", // SaaS admin may or may not be in an org
       role: ROLES.SAAS_ADMIN,
       isSaasAdmin: true,
-      isOrgAdmin: false,
-      isMember: false,
+      isAdmin: false,
+      isPlantManager: false,
+      isSupervisor: false,
+      isOperator: false,
+      isViewer: false,
+      isCustomer: false,
+      permissions: ["*"], // SaaS admin has all permissions
     };
   }
 
-  // Regular user — must select an organization first.
-  // Redirect to /select-org if no org is active in the Clerk session.
-  // This prevents data leakage and ensures the user belongs to the right tenant.
   if (!orgId) redirect("/select-org");
 
-  const role = clerkOrgRoleToAppRole(orgRole ?? undefined);
+  // Fetch granular DB roles and permissions
+  const orgUser = await prisma.orgUser.findFirst({
+    where: { clerkUserId: userId, organizationId: orgId },
+    include: {
+      factoryRoles: {
+        include: {
+          role: {
+            include: {
+              permissions: {
+                include: { permission: true }
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  const permissions = new Set<string>();
+  let highestRoleName: string | undefined = undefined;
+
+  const rolePrecedence = [
+    ROLES.SAAS_ADMIN,
+    ROLES.ADMIN,
+    ROLES.PLANT_MANAGER,
+    ROLES.SUPERVISOR,
+    ROLES.OPERATOR,
+    ROLES.VIEWER,
+    ROLES.CUSTOMER
+  ];
+
+  if (orgUser) {
+    let bestIdx = rolePrecedence.length;
+
+    for (const fr of orgUser.factoryRoles) {
+      const rName = fr.role.name;
+      const idx = rolePrecedence.indexOf(rName as any);
+      if (idx !== -1 && idx < bestIdx) {
+        bestIdx = idx;
+        highestRoleName = rName;
+      }
+
+      for (const rp of fr.role.permissions) {
+        permissions.add(`${rp.permission.module}:${rp.permission.action}`);
+      }
+    }
+  }
+
+  let finalRole = clerkOrgRoleToAppRole(orgRole ?? undefined);
+  const isCustomer = !!orgUser?.customerId;
+
+  if (highestRoleName) {
+    finalRole = highestRoleName as Role;
+  } else if (isCustomer) {
+    finalRole = ROLES.CUSTOMER;
+  }
 
   return {
     userId,
     orgId,
-    role,
+    role: finalRole,
     isSaasAdmin: false,
-    isOrgAdmin: role === ROLES.ORG_ADMIN,
-    isMember: role === ROLES.MEMBER,
+    isAdmin: finalRole === ROLES.ADMIN,
+    isPlantManager: finalRole === ROLES.PLANT_MANAGER,
+    isSupervisor: finalRole === ROLES.SUPERVISOR,
+    isOperator: finalRole === ROLES.OPERATOR,
+    isViewer: finalRole === ROLES.VIEWER,
+    isCustomer: finalRole === ROLES.CUSTOMER || isCustomer,
+    customerId: orgUser?.customerId || undefined,
+    permissions: Array.from(permissions),
   };
 }
 
 // ─── Route Guards ─────────────────────────────────────────────────────────────
 
 /**
- * Use at the top of any Server Component page that requires specific roles.
+ * Require a specific granular permission from the database.
+ * Used by mutating endpoints (e.g. POST, PUT, DELETE) and sensitive GET routes.
+ */
+export async function requirePermission(module: string, action: string): Promise<AuthContext> {
+  const ctx = await getAuthContext();
+  
+  if (ctx.isSaasAdmin) return ctx; // SaaS admins bypass permission checks
+  
+  const permKey = `${module}:${action}`;
+  if (!ctx.permissions.includes(permKey) && !ctx.permissions.includes("*")) {
+    redirect("/unauthorized");
+  }
+  
+  return ctx;
+}
+
+/**
+ * Legacy: Use at the top of any Server Component page that requires specific roles.
  * Redirects to /unauthorized if the user's role is not in `allowedRoles`.
- *
- * Example:
- *   const ctx = await requireRole(["ORG_ADMIN", "SAAS_ADMIN"]);
  */
 export async function requireRole(allowedRoles: Role[]): Promise<AuthContext> {
   const ctx = await getAuthContext();
@@ -105,11 +180,27 @@ export async function requireSaasAdmin(): Promise<AuthContext> {
 }
 
 /**
- * Shorthand: require org admin or above.
- * Used on settings, user management, customers, vendors, etc.
+ * Shorthand: require admin or above.
+ * Used in Server Component pages (redirects on failure).
  */
-export async function requireOrgAdmin(): Promise<AuthContext> {
-  return requireRole([ROLES.ORG_ADMIN, ROLES.SAAS_ADMIN]);
+export async function requireAdmin(): Promise<AuthContext> {
+  return requireRole([ROLES.ADMIN, ROLES.SAAS_ADMIN]);
+}
+
+/**
+ * API-route guard: require ADMIN or SAAS_ADMIN.
+ * Returns a 403 NextResponse when the check fails.
+ */
+export async function requireAdminOrAbove(): Promise<AuthContext | NextResponse> {
+  try {
+    const ctx = await getAuthContext();
+    if (ctx.role !== ROLES.ADMIN && ctx.role !== ROLES.SAAS_ADMIN) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    return ctx;
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 }
 
 // ─── Tenant-Aware Org ID ──────────────────────────────────────────────────────
@@ -117,25 +208,27 @@ export async function requireOrgAdmin(): Promise<AuthContext> {
 /**
  * Server-side: returns the current org ID from Clerk JWT.
  * SaaS admin: returns their active org or DEMO_ORG_ID.
- * Falls back to env var for local dev without Clerk session.
+ * Throws an error or redirects if auth fails.
  */
 export async function getCurrentOrgId(): Promise<string> {
-  try {
-    const { orgId, userId } = await auth();
-    if (userId && checkIsSaasAdmin(userId)) {
-      // SaaS admin: for API routes, they pass ?orgId= query param
-      // Otherwise return demo org so dashboard doesn't crash
-      return orgId ?? process.env.NEXT_PUBLIC_ORG_ID ?? DEMO_ORG_ID;
-    }
-    if (orgId) return orgId;
-    if (userId) return userId; // solo user fallback
-  } catch {
-    // Outside Clerk context (seed scripts, etc.)
+  const { orgId, userId } = await auth();
+
+  if (!userId) {
+    redirect("/sign-in");
   }
-  return process.env.NEXT_PUBLIC_ORG_ID ?? DEMO_ORG_ID;
+
+  if (checkIsSaasAdmin(userId)) {
+    return orgId ?? "";
+  }
+  
+  if (orgId) return orgId;
+  if (userId) return userId; // solo user fallback
+  
+  throw new Error("Unauthorized: No organization selected");
 }
 
 /** Synchronous fallback — use only in client-side code */
 export function getCurrentOrgIdSync(): string {
-  return process.env.NEXT_PUBLIC_ORG_ID ?? DEMO_ORG_ID;
+  throw new Error("getCurrentOrgIdSync is insecure for tenant scoping. Use Clerk's useAuth() on the client.");
 }
+

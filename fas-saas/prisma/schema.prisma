@@ -17,12 +17,12 @@ model Organization {
   id               String   @id @default(cuid())
   clerkOrgId       String?  @unique
   name             String
-  plan             String   @default("STARTER")     // STARTER | PRO | ENTERPRISE
+  plan             String   @default("STARTER") // STARTER | PRO | ENTERPRISE
   stripeCustomerId String?
   billingEmail     String?
   maxUsers         Int      @default(10)
   isActive         Boolean  @default(true)
-  featureFlags     Json?                             // { "qc": true, "maintenance": true }
+  featureFlags     Json? // { "qc": true, "maintenance": true }
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -39,6 +39,9 @@ model Organization {
   shifts               Shift[]
   notifications        Notification[]
   maintenanceSchedules MaintenanceSchedule[]
+  TenantNote           TenantNote[]
+  SupportTicket        SupportTicket[]
+  ActivityLog          ActivityLog[]
 
   @@index([isActive])
 }
@@ -76,14 +79,14 @@ model Machine {
   name            String
   description     String?
   machineType     String    @default("General")
-  protocol        String    @default("MANUAL")       // OPC-UA | Modbus | MTConnect | MANUAL
+  protocol        String    @default("MANUAL") // OPC-UA | Modbus | MTConnect | MANUAL
   ipAddress       String?
-  status          String    @default("IDLE")          // ACTIVE | IDLE | STOPPED
+  status          String    @default("IDLE") // ACTIVE | IDLE | STOPPED
   lastHeartbeatAt DateTime?
   isActive        Boolean   @default(true)
   createdAt       DateTime  @default(now())
 
-  plant                Plant                @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  plant                Plant                 @relation(fields: [plantId], references: [id], onDelete: Cascade)
   productionLogs       ProductionLog[]
   downtimeEvents       DowntimeEvent[]
   statusLogs           MachineStatusLog[]
@@ -99,12 +102,12 @@ model Machine {
 model MachineStatusLog {
   id        String   @id @default(cuid())
   machineId String
-  status    String                                   // ACTIVE | IDLE | STOPPED
-  source    String   @default("MANUAL")              // MQTT | MANUAL | HEARTBEAT | TEST
+  status    String // ACTIVE | IDLE | STOPPED
+  source    String   @default("MANUAL") // MQTT | MANUAL | HEARTBEAT | TEST
   changedAt DateTime @default(now())
   notes     String?
 
-  machine   Machine  @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  machine Machine @relation(fields: [machineId], references: [id], onDelete: Cascade)
 
   @@index([machineId, changedAt])
 }
@@ -115,21 +118,25 @@ model OrgUser {
   id             String    @id @default(cuid())
   organizationId String
   clerkUserId    String
+  customerId     String? // Links to Customer for Customer Portal access
   name           String    @default("User")
   email          String?
-  role           String    @default("MEMBER")        // legacy — prefer UserFactoryRole
-  loginType      String    @default("EMAIL")         // EMAIL | PIN | RFID
-  pin            String?                             // bcrypt-hashed 6-digit PIN
+  role           String    @default("MEMBER") // legacy — prefer UserFactoryRole
+  loginType      String    @default("EMAIL") // EMAIL | PIN | RFID
+  pin            String? // bcrypt-hashed 6-digit PIN
   rfidTag        String?
   isActive       Boolean   @default(true)
-  deletedAt      DateTime?                           // soft-delete
+  deletedAt      DateTime? // soft-delete
   createdAt      DateTime  @default(now())
+  lastActiveAt   DateTime?
 
   organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer         Customer?         @relation(fields: [customerId], references: [id], onDelete: SetNull)
   productionLogs   ProductionLog[]
   factoryRoles     UserFactoryRole[]
   shiftAssignments ShiftAssignment[]
 
+  @@unique([organizationId, customerId])
   @@index([organizationId])
   @@index([clerkUserId])
 }
@@ -138,11 +145,11 @@ model OrgUser {
 
 model Role {
   id             String   @id @default(cuid())
-  organizationId String?                            // null = system role
+  organizationId String? // null = system role
   name           String
   description    String?
   isCustom       Boolean  @default(false)
-  isSystem       Boolean  @default(false)           // true = cannot delete/modify
+  isSystem       Boolean  @default(false) // true = cannot delete/modify
   createdAt      DateTime @default(now())
 
   organization     Organization?     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -155,12 +162,12 @@ model Role {
 // ─── RBAC: Permissions ───────────────────────────────────────────────────────
 
 model Permission {
-  id     String @id @default(cuid())
-  module String                                     // production | inventory | machines | qc | maintenance | ...
-  action String                                     // view | edit | delete | approve | inspect | flag | ...
+  id     String  @id @default(cuid())
+  module String // production | inventory | machines | qc | maintenance | ...
+  action String // view | edit | delete | approve | inspect | flag | ...
   label  String?
 
-  roles  RolePermission[]
+  roles RolePermission[]
 
   @@unique([module, action])
 }
@@ -169,8 +176,8 @@ model RolePermission {
   roleId       String
   permissionId String
 
-  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
   @@id([roleId, permissionId])
 }
@@ -185,9 +192,9 @@ model UserFactoryRole {
   grantedAt DateTime @default(now())
   grantedBy String?
 
-  user      OrgUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  factory   Plant    @relation(fields: [factoryId], references: [id], onDelete: Cascade)
+  user    OrgUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role    Role    @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  factory Plant   @relation(fields: [factoryId], references: [id], onDelete: Cascade)
 
   @@unique([userId, roleId, factoryId])
   @@index([userId])
@@ -201,8 +208,8 @@ model Shift {
   organizationId String
   plantId        String
   name           String
-  startTime      String                             // "06:00"
-  endTime        String                             // "14:00"
+  startTime      String // "06:00"
+  endTime        String // "14:00"
   createdAt      DateTime @default(now())
 
   organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -221,8 +228,8 @@ model ShiftAssignment {
   notes     String?
   createdAt DateTime @default(now())
 
-  user      OrgUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  shift     Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  user  OrgUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shift Shift   @relation(fields: [shiftId], references: [id], onDelete: Cascade)
 
   @@unique([userId, shiftId, workDate])
   @@index([shiftId, workDate])
@@ -236,8 +243,8 @@ model QcInspection {
   plantId        String
   workOrderId    String?
   inspectorId    String?
-  inspectionType String   @default("INLINE")        // INLINE | FINAL | INCOMING
-  result         String?                            // PASS | FAIL | CONDITIONAL
+  inspectionType String   @default("INLINE") // INLINE | FINAL | INCOMING
+  result         String? // PASS | FAIL | CONDITIONAL
   sampleSize     Int      @default(1)
   defectsFound   Int      @default(0)
   notes          String?
@@ -256,8 +263,8 @@ model NonConformance {
   id               String    @id @default(cuid())
   inspectionId     String
   description      String
-  severity         String    @default("MEDIUM")     // LOW | MEDIUM | HIGH | CRITICAL
-  status           String    @default("OPEN")        // OPEN | UNDER_REVIEW | CLOSED
+  severity         String    @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
+  status           String    @default("OPEN") // OPEN | UNDER_REVIEW | CLOSED
   rootCause        String?
   correctiveAction String?
   resolvedAt       DateTime?
@@ -277,9 +284,9 @@ model MaintenanceTicket {
   machineId      String?
   title          String
   description    String?
-  type           String    @default("BREAKDOWN")    // BREAKDOWN | PREVENTIVE | INSPECTION
-  priority       String    @default("MEDIUM")       // LOW | MEDIUM | HIGH | CRITICAL
-  status         String    @default("OPEN")          // OPEN | IN_PROGRESS | RESOLVED | CLOSED
+  type           String    @default("BREAKDOWN") // BREAKDOWN | PREVENTIVE | INSPECTION
+  priority       String    @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
+  status         String    @default("OPEN") // OPEN | IN_PROGRESS | RESOLVED | CLOSED
   assignedToId   String?
   estimatedHrs   Float?
   actualHrs      Float?
@@ -301,7 +308,7 @@ model MaintenanceSchedule {
   machineId       String?
   title           String
   description     String?
-  frequency       String    @default("MONTHLY")     // DAILY | WEEKLY | MONTHLY | QUARTERLY | ANNUAL
+  frequency       String    @default("MONTHLY") // DAILY | WEEKLY | MONTHLY | QUARTERLY | ANNUAL
   nextDueAt       DateTime
   lastCompletedAt DateTime?
   isActive        Boolean   @default(true)
@@ -321,11 +328,11 @@ model Notification {
   organizationId String
   recipientId    String?
   recipientEmail String?
-  type           String                             // machine.stopped | low.stock | wo.overdue | qc.failed | invite
-  channel        String    @default("EMAIL")        // EMAIL | SMS | IN_APP
+  type           String // machine.stopped | low.stock | wo.overdue | qc.failed | invite
+  channel        String    @default("EMAIL") // EMAIL | SMS | IN_APP
   subject        String?
   body           String?
-  status         String    @default("QUEUED")       // QUEUED | SENT | FAILED | BOUNCED
+  status         String    @default("QUEUED") // QUEUED | SENT | FAILED | BOUNCED
   jobId          String?
   sentAt         DateTime?
   failureReason  String?
@@ -369,20 +376,20 @@ model BomItem {
 // ─── Work Order ──────────────────────────────────────────────────────────────
 
 model WorkOrder {
-  id             String    @id @default(cuid())
+  id             String   @id @default(cuid())
   organizationId String
   plantId        String
   productId      String
   shiftId        String?
   quantity       Int
   targetQty      Int?
-  defectQty      Int       @default(0)
+  defectQty      Int      @default(0)
   dueDate        DateTime
   estimatedHrs   Float?
-  status         String    @default("QUEUED")       // QUEUED | IN_PROGRESS | COMPLETED | ON_HOLD
+  status         String   @default("QUEUED") // QUEUED | IN_PROGRESS | COMPLETED | ON_HOLD
   notes          String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   plant          Plant           @relation(fields: [plantId], references: [id])
@@ -405,7 +412,7 @@ model RoutingStep {
   description  String
   machineType  String?
   estimatedHrs Float?
-  status       String  @default("PENDING")          // PENDING | IN_PROGRESS | COMPLETED
+  status       String  @default("PENDING") // PENDING | IN_PROGRESS | COMPLETED
 
   workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
 }
@@ -465,7 +472,7 @@ model InventoryItem {
   plantId        String?
   sku            String
   name           String
-  type           String   @default("RAW_MATERIAL")  // RAW_MATERIAL | FINISHED_GOOD | WIP
+  type           String   @default("RAW_MATERIAL") // RAW_MATERIAL | FINISHED_GOOD | WIP
   quantityOnHand Float    @default(0)
   reorderPoint   Float    @default(0)
   unit           String   @default("pcs")
@@ -484,7 +491,7 @@ model InventoryMovement {
   id        String   @id @default(cuid())
   itemId    String
   quantity  Float
-  type      String                                   // RECEIPT | CONSUMPTION | ADJUSTMENT
+  type      String // RECEIPT | CONSUMPTION | ADJUSTMENT
   reference String?
   notes     String?
   timestamp DateTime @default(now())
@@ -505,6 +512,7 @@ model Customer {
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   orders       SalesOrder[]
+  users        OrgUser[]
 }
 
 model SalesOrder {
@@ -536,7 +544,7 @@ model PurchaseOrder {
   organizationId   String
   vendorId         String
   amount           Float
-  status           String    @default("PENDING")    // PENDING | APPROVED | RECEIVED | CANCELLED
+  status           String    @default("PENDING") // PENDING | APPROVED | RECEIVED | CANCELLED
   notes            String?
   expectedDelivery DateTime?
   createdAt        DateTime  @default(now())
@@ -545,4 +553,56 @@ model PurchaseOrder {
   vendor       Vendor       @relation(fields: [vendorId], references: [id])
 
   @@index([organizationId, status])
+}
+
+// ─── SaaS Admin CRM Models (Platform-Level) ──────────────────────────────────
+
+model TenantNote {
+  id             String   @id @default(cuid())
+  organizationId String
+  authorId       String // Clerk User ID of the SaaS Admin
+  content        String
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+model Lead {
+  id          String   @id @default(cuid())
+  name        String
+  email       String
+  phone       String?
+  companyName String
+  stage       String   @default("NEW") // NEW, CONTACTED, DEMO, TRIAL, WON, LOST
+  assignedTo  String?
+  createdAt   DateTime @default(now())
+}
+
+model SupportTicket {
+  id             String    @id @default(cuid())
+  organizationId String
+  subject        String
+  description    String
+  status         String    @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED
+  priority       String    @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  createdAt      DateTime  @default(now())
+  resolvedAt     DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+}
+
+model ActivityLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  action         String
+  actorId        String
+  timestamp      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, timestamp])
 }

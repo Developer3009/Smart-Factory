@@ -8,7 +8,7 @@ import {
 
 const PLAN_COLOR: Record<string, string> = { STARTER: "#06b6d4", PRO: "#6366f1", ENTERPRISE: "#f59e0b" };
 
-interface OrgUser { id: string; name: string; email: string | null; role: string; clerkUserId: string; createdAt: Date | string; }
+interface OrgUser { id: string; name: string; email: string | null; role: string; clerkUserId: string; createdAt: Date | string; isActive?: boolean; lastActiveAt?: Date | string | null; }
 interface Organization { id: string; name: string; plan: string; createdAt: Date | string; _count: { users: number; plants: number; workOrders: number }; users?: OrgUser[]; }
 interface ActiveSession { userId: string; email: string; name: string; org: string; lastActive: string; }
 interface ClerkUser { id: string; email: string; name: string; createdAt: string; lastSignIn: string; }
@@ -166,16 +166,28 @@ export default function SaasAdminDashboard({
             <span style={{ fontSize: 12, color: "var(--text-muted)", marginLeft: 4 }}>Click row to expand members</span>
           </div>
           <table className="data-table">
-            <thead><tr><th>Organization</th><th>Plan</th><th>Members</th><th>Plants</th><th>Work Orders</th><th>Created</th></tr></thead>
+            <thead><tr><th>Organization</th><th>Plan</th><th>Active Users</th><th>Plants</th><th>Work Orders</th><th>Last Login</th><th>Created</th></tr></thead>
             <tbody>
               {organizations.map(org => (
                 <Fragment key={org.id}>
                   <tr key={org.id} style={{ cursor: "pointer" }} onClick={() => setExpandedOrg(expandedOrg === org.id ? null : org.id)}>
                     <td><div style={{ fontWeight: 600 }}>{org.name}</div><div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "monospace" }}>{org.id}</div></td>
                     <td><span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: (PLAN_COLOR[org.plan] ?? "#9ca3af") + "20", color: PLAN_COLOR[org.plan] ?? "#9ca3af" }}>{org.plan}</span></td>
-                    <td style={{ fontWeight: 700 }}>{org._count.users}</td>
+                    
+                    <td style={{ fontWeight: 700 }}>
+                      {org.users?.filter(u => u.isActive).length ?? 0} <span style={{ fontSize: 11, fontWeight: "normal", color: "var(--text-muted)" }}>/ {org._count.users}</span>
+                    </td>
                     <td>{org._count.plants}</td>
                     <td>{org._count.workOrders}</td>
+                    <td style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                      {(() => {
+                        const activeUsers = org.users?.filter(u => u.lastActiveAt) || [];
+                        if (!activeUsers.length) return "Never";
+                        const maxDate = new Date(Math.max(...activeUsers.map(u => new Date(u.lastActiveAt as string).getTime())));
+                        const diffDays = Math.floor((new Date().getTime() - maxDate.getTime()) / (1000 * 3600 * 24));
+                        return diffDays === 0 ? "Today" : diffDays === 1 ? "Yesterday" : `${diffDays} days ago`;
+                      })()}
+                    </td>
                     <td style={{ fontSize: 12, color: "var(--text-muted)" }}>{new Date(org.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "2-digit" })}</td>
                   </tr>
                   {expandedOrg === org.id && (

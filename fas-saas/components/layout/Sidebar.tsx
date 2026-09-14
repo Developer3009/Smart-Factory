@@ -6,53 +6,39 @@ import {
   LayoutDashboard, Cpu, Package, Factory, Users, ShoppingBag,
   ClipboardList, Truck, Layers, ShoppingCart, Settings, Cog,
   UserCog, Zap, Shield, Building2, Globe,
-  ClipboardCheck, Wrench, CalendarDays, TestTube,
+  ClipboardCheck, Wrench, CalendarDays, TestTube, Eye
 } from "lucide-react";
 import { Role, ROLES } from "@/lib/roles";
 
-// ─── Navigation Matrix ─────────────────────────────────────────────────────────
-//
-// SAAS_ADMIN: Platform service provider
-//   ✅ Dashboard, Members (read all orgs), All Organizations, Settings
-//   ❌ NOT shown: Production-ops menus (those belong to the factory org)
-//
-// ORG_ADMIN: Factory/organization admin
-//   ✅ Dashboard, Machines, Inventory, Production, Orders, Raw Materials,
-//      Customers, Products, Vendors, Purchase, Members, Settings
-//
-// MEMBER: Factory employee/operator
-//   ✅ Dashboard, Machines, Inventory, Production, Orders, Raw Materials
-//   ❌ NOT shown: Customers, Products, Vendors, Purchase, Members, Settings
-
 // ── Section 1: Overview (all roles)
 const OVERVIEW_NAV = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: ["SAAS_ADMIN", "ORG_ADMIN", "MEMBER"] },
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: ["SAAS_ADMIN", "ADMIN", "PLANT_MANAGER", "SUPERVISOR", "OPERATOR", "VIEWER"] },
 ];
 
-// ── Section 2: Factory Operations (ORG_ADMIN + MEMBER)
+// ── Section 2: Factory Operations
 const OPS_NAV = [
-  { label: "Machines",      href: "/machines",      icon: Cpu,           roles: ["ORG_ADMIN", "MEMBER"] },
-  { label: "Production",    href: "/production",    icon: Factory,       roles: ["ORG_ADMIN", "MEMBER"] },
-  { label: "Inventory",     href: "/inventory",     icon: Package,       roles: ["ORG_ADMIN", "MEMBER"] },
-  { label: "Raw Materials", href: "/raw-materials", icon: Layers,        roles: ["ORG_ADMIN", "MEMBER"] },
-  { label: "Orders",          href: "/orders",       icon: ClipboardList,  roles: ["ORG_ADMIN", "MEMBER"] },
-  { label: "Quality Control", href: "/qc",           icon: ClipboardCheck, roles: ["ORG_ADMIN", "MEMBER"] },
-  { label: "Maintenance",     href: "/maintenance",  icon: Wrench,         roles: ["ORG_ADMIN", "MEMBER"] },
-  { label: "Shifts",          href: "/shifts",       icon: CalendarDays,   roles: ["ORG_ADMIN"] },
+  { label: "Machines",      href: "/machines",      icon: Cpu,           roles: ["ADMIN", "PLANT_MANAGER", "SUPERVISOR", "OPERATOR", "VIEWER"] },
+  { label: "Production",    href: "/production",    icon: Factory,       roles: ["ADMIN", "PLANT_MANAGER", "SUPERVISOR", "OPERATOR", "VIEWER"] },
+  { label: "Inventory",     href: "/inventory",     icon: Package,       roles: ["ADMIN", "PLANT_MANAGER", "SUPERVISOR", "OPERATOR", "VIEWER"] },
+  { label: "Raw Materials", href: "/raw-materials", icon: Layers,        roles: ["ADMIN", "PLANT_MANAGER", "SUPERVISOR", "OPERATOR", "VIEWER"] },
+  { label: "Orders",        href: "/orders",        icon: ClipboardList, roles: ["ADMIN", "PLANT_MANAGER", "SUPERVISOR", "OPERATOR", "VIEWER"] },
+  { label: "Quality Control", href: "/qc",          icon: ClipboardCheck,roles: ["ADMIN", "PLANT_MANAGER", "SUPERVISOR", "OPERATOR", "VIEWER"] },
+  { label: "Maintenance",   href: "/maintenance",   icon: Wrench,        roles: ["ADMIN", "PLANT_MANAGER", "SUPERVISOR", "OPERATOR", "VIEWER"] },
+  { label: "Shifts",        href: "/shifts",        icon: CalendarDays,  roles: ["ADMIN", "PLANT_MANAGER", "SUPERVISOR"] },
 ];
 
-// ── Section 3: Admin Business Tools (ORG_ADMIN only)
+// ── Section 3: Admin Business Tools
 const ADMIN_NAV = [
-  { label: "Customers", href: "/customers", icon: Users,        roles: ["ORG_ADMIN"] },
-  { label: "Products",  href: "/products",  icon: ShoppingBag,  roles: ["ORG_ADMIN"] },
-  { label: "Vendors",   href: "/vendors",   icon: Truck,        roles: ["ORG_ADMIN"] },
-  { label: "Purchase",  href: "/purchase",  icon: ShoppingCart, roles: ["ORG_ADMIN"] },
+  { label: "Customers", href: "/customers", icon: Users,        roles: ["ADMIN", "PLANT_MANAGER"] },
+  { label: "Products",  href: "/products",  icon: ShoppingBag,  roles: ["ADMIN", "PLANT_MANAGER"] },
+  { label: "Vendors",   href: "/vendors",   icon: Truck,        roles: ["ADMIN", "PLANT_MANAGER"] },
+  { label: "Purchase",  href: "/purchase",  icon: ShoppingCart, roles: ["ADMIN", "PLANT_MANAGER"] },
 ];
 
-// ── Section 4: People & Settings (ORG_ADMIN + SAAS_ADMIN)
+// ── Section 4: People & Settings
 const PEOPLE_NAV = [
-  { label: "Members",  href: "/members",  icon: UserCog, roles: ["SAAS_ADMIN", "ORG_ADMIN"] },
-  { label: "Settings", href: "/settings", icon: Settings, roles: ["SAAS_ADMIN", "ORG_ADMIN"] },
+  { label: "Members",  href: "/members",  icon: UserCog, roles: ["SAAS_ADMIN", "ADMIN", "PLANT_MANAGER"] },
+  { label: "Settings", href: "/settings", icon: Settings, roles: ["SAAS_ADMIN", "ADMIN"] },
 ];
 
 // ─── Sidebar ───────────────────────────────────────────────────────────────────
@@ -96,11 +82,15 @@ function NavSection({ title, items, role, pathname, titleColor }: {
 export default function Sidebar({ role }: { role: Role }) {
   const pathname = usePathname();
 
-  const roleBadge = {
-    SAAS_ADMIN: { label: "SaaS Admin",    color: "#f59e0b", bg: "#fef3c7" },
-    ORG_ADMIN:  { label: "Organization Admin", color: "#6366f1", bg: "#ede9fe" },
-    MEMBER:     { label: "Employee",       color: "#06b6d4", bg: "#cffafe" },
-  }[role];
+  let roleBadge = { label: "User", color: "#6b7280", bg: "#f3f4f6", icon: UserCog };
+
+  if (role === ROLES.SAAS_ADMIN) roleBadge = { label: "SaaS Admin", color: "#f59e0b", bg: "#fef3c7", icon: Shield };
+  else if (role === ROLES.ADMIN) roleBadge = { label: "Org Admin", color: "#6366f1", bg: "#ede9fe", icon: Zap };
+  else if (role === ROLES.PLANT_MANAGER) roleBadge = { label: "Plant Manager", color: "#8b5cf6", bg: "#ede9fe", icon: Factory };
+  else if (role === ROLES.SUPERVISOR) roleBadge = { label: "Supervisor", color: "#ec4899", bg: "#fce7f3", icon: Users };
+  else if (role === ROLES.OPERATOR) roleBadge = { label: "Operator", color: "#06b6d4", bg: "#cffafe", icon: Wrench };
+  else if (role === ROLES.VIEWER) roleBadge = { label: "Viewer", color: "#10b981", bg: "#d1fae5", icon: Eye };
+  else if (role === ROLES.CUSTOMER) roleBadge = { label: "Customer", color: "#3b82f6", bg: "#dbeafe", icon: ShoppingBag };
 
   return (
     <aside style={{
@@ -140,9 +130,7 @@ export default function Sidebar({ role }: { role: Role }) {
           fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 99,
           background: roleBadge.bg, color: roleBadge.color,
         }}>
-          {role === ROLES.SAAS_ADMIN && <Shield size={11} />}
-          {role === ROLES.ORG_ADMIN  && <Zap size={11} />}
-          {role === ROLES.MEMBER     && <UserCog size={11} />}
+          <roleBadge.icon size={11} />
           {roleBadge.label}
         </span>
       </div>
@@ -179,18 +167,18 @@ export default function Sidebar({ role }: { role: Role }) {
           </>
         )}
 
-        {/* Factory Operations — ORG_ADMIN + MEMBER */}
-        {role !== ROLES.SAAS_ADMIN && (
+        {/* Factory Operations */}
+        {role !== ROLES.SAAS_ADMIN && role !== ROLES.CUSTOMER && (
           <NavSection title="Factory Operations" items={OPS_NAV} role={role} pathname={pathname} />
         )}
 
-        {/* Admin Business Tools — ORG_ADMIN only */}
-        {role === ROLES.ORG_ADMIN && (
+        {/* Admin Business Tools */}
+        {role !== ROLES.SAAS_ADMIN && role !== ROLES.CUSTOMER && (
           <NavSection title="Business" items={ADMIN_NAV} role={role} pathname={pathname} />
         )}
 
-        {/* People & Settings — ORG_ADMIN only (SAAS_ADMIN has platform section above) */}
-        {role === ROLES.ORG_ADMIN && (
+        {/* People & Settings */}
+        {role !== ROLES.CUSTOMER && (
           <NavSection title="Organization" items={PEOPLE_NAV} role={role} pathname={pathname} />
         )}
 
@@ -211,5 +199,3 @@ export default function Sidebar({ role }: { role: Role }) {
     </aside>
   );
 }
-
-

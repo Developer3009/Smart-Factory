@@ -1,44 +1,34 @@
 // ─── Role Definitions ────────────────────────────────────────────────────────
-// Three tiers in this SaaS:
-//   SAAS_ADMIN  → platform owner (you) — sees all organizations
-//   ORG_ADMIN   → factory owner/manager — sees their org in full
-//   MEMBER      → operator/shop-floor staff — limited read-only view
 
 export const ROLES = {
-  SAAS_ADMIN: "SAAS_ADMIN",
-  ORG_ADMIN:  "ORG_ADMIN",
-  MEMBER:     "MEMBER",
+  SAAS_ADMIN:    "SAAS_ADMIN",    // Platform owner
+  ADMIN:         "ADMIN",         // Org owner / Factory Director
+  PLANT_MANAGER: "PLANT_MANAGER", // Plant-level manager
+  SUPERVISOR:    "SUPERVISOR",    // Line/Shift supervisor
+  OPERATOR:      "OPERATOR",      // Shop-floor worker
+  VIEWER:        "VIEWER",        // Read-only access
+  CUSTOMER:      "CUSTOMER",      // Customer portal user
 } as const;
 
 export type Role = (typeof ROLES)[keyof typeof ROLES];
 
-// Clerk org roles map to our roles:
-//   org:admin  → ORG_ADMIN
-//   org:member → MEMBER
+// Clerk org roles map to our baseline roles:
+// org:admin  → ADMIN
+// org:member → VIEWER (least privilege by default, DB roles will override this in getAuthContext)
 export function clerkOrgRoleToAppRole(clerkRole: string | undefined): Role {
-  if (clerkRole === "org:admin") return ROLES.ORG_ADMIN;
-  return ROLES.MEMBER; // default — least privilege
+  if (clerkRole === "org:admin") return ROLES.ADMIN;
+  return ROLES.VIEWER; 
 }
 
-// Navigation items each role can see
-export const MEMBER_HIDDEN_ROUTES = [
-  "/customers",
-  "/vendors",
-  "/products",
-  "/purchase",
-  "/members",
-  "/settings",
-];
-
-// Routes only org admin or above can access
-export const ORG_ADMIN_ONLY_ROUTES = [
-  "/customers",
-  "/vendors",
-  "/products",
-  "/purchase",
-  "/members",
-  "/settings",
-];
-
-// Routes only saas admin can access
+// Basic Route Guards based on roles
 export const SAAS_ADMIN_ROUTES = ["/saas-admin"];
+
+// Routes that only managers and above can access
+export const ADMIN_ONLY_ROUTES = [
+  "/customers",
+  "/vendors",
+  "/products",
+  "/purchase",
+  "/members",
+  "/settings",
+];

@@ -85,7 +85,7 @@ export default function MembersClient({ members: initialMembers, role, orgId }: 
     } catch { /* ignore */ }
   }
 
-  const canManage = role === ROLES.ORG_ADMIN || role === ROLES.SAAS_ADMIN;
+  const canManage = role === ROLES.ADMIN || role === ROLES.SAAS_ADMIN;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>

@@ -13,7 +13,7 @@ export default async function SaasAdminPage() {
     prisma.organization.findMany({
       include: {
         _count: { select: { users: true, plants: true, workOrders: true } },
-        users: { select: { id: true, name: true, email: true, role: true, clerkUserId: true, createdAt: true }, orderBy: { createdAt: "asc" } },
+        users: { select: { id: true, name: true, email: true, role: true, clerkUserId: true, createdAt: true, isActive: true, lastActiveAt: true }, orderBy: { createdAt: "asc" } },
       },
       orderBy: { createdAt: "desc" },
     }),

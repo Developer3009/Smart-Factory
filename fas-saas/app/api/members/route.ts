@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     const ctx = await getAuthContext();
 
     // Only ORG_ADMIN or SAAS_ADMIN can add members
-    if (ctx.role !== ROLES.ORG_ADMIN && ctx.role !== ROLES.SAAS_ADMIN) {
+    if (ctx.role !== ROLES.ADMIN && ctx.role !== ROLES.SAAS_ADMIN) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -34,8 +34,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "name and clerkUserId are required" }, { status: 400 });
     }
 
-    // SaaS admin can specify any org, org admin uses their own orgId
     const targetOrgId = ctx.isSaasAdmin && organizationId ? organizationId : ctx.orgId;
+    if (!targetOrgId) {
+      return NextResponse.json({ error: "Organization ID is required" }, { status: 400 });
+    }
 
     // Validate role: ORG_ADMIN can only add OPERATOR, SUPERVISOR, PLANT_MANAGER
     // SAAS_ADMIN can also add ADMIN role
