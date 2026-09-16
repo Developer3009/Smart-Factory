@@ -11,6 +11,19 @@ export const DEMO_ORG_ID = ""; // Removed insecure fallback
 
 import { prisma } from "@/lib/prisma";
 
+async function resolveOrganizationId(clerkOrgId: string): Promise<string> {
+  const organization = await prisma.organization.findUnique({
+    where: { clerkOrgId },
+    select: { id: true },
+  });
+
+  if (!organization) {
+    throw new Error("Organization is not provisioned");
+  }
+
+  return organization.id;
+}
+
 export interface AuthContext {
   userId: string;
   orgId: string;       // tenant key — used in every Prisma WHERE clause
@@ -67,9 +80,11 @@ export async function getAuthContext(): Promise<AuthContext> {
 
   if (!orgId) redirect("/select-org");
 
+  const organizationId = await resolveOrganizationId(orgId);
+
   // Fetch granular DB roles and permissions
   const orgUser = await prisma.orgUser.findFirst({
-    where: { clerkUserId: userId, organizationId: orgId },
+    where: { clerkUserId: userId, organizationId },
     include: {
       factoryRoles: {
         include: {
@@ -126,7 +141,7 @@ export async function getAuthContext(): Promise<AuthContext> {
 
   return {
     userId,
-    orgId,
+    orgId: organizationId,
     role: finalRole,
     isSaasAdmin: false,
     isAdmin: finalRole === ROLES.ADMIN,
@@ -217,12 +232,7 @@ export async function getCurrentOrgId(): Promise<string> {
     redirect("/sign-in");
   }
 
-  if (checkIsSaasAdmin(userId)) {
-    return orgId ?? "";
-  }
-  
-  if (orgId) return orgId;
-  if (userId) return userId; // solo user fallback
+  if (orgId) return resolveOrganizationId(orgId);
   
   throw new Error("Unauthorized: No organization selected");
 }
