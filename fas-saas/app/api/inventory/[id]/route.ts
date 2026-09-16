@@ -1,39 +1,52 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentOrgId } from "@/lib/tenant";
+import { getAuthContext } from "@/lib/auth";
+import { withPermission } from "@/lib/api-middleware";
+import { inventorySchema } from "@/lib/validations";
+import { handleApiError } from "@/lib/api-errors";
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { orgId } = await getAuthContext();
     const { id } = await params;
-    const orgId = await getCurrentOrgId();
-    const body = await req.json();
-    const existing = await prisma.inventoryItem.findFirst({ where: { id: id, organizationId: orgId } });
-    if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    const updated = await prisma.inventoryItem.update({
-      where: { id: id },
-      data: {
-        ...(body.quantityOnHand !== undefined && { quantityOnHand: parseFloat(body.quantityOnHand) }),
-        ...(body.reorderPoint !== undefined && { reorderPoint: parseFloat(body.reorderPoint) }),
-        ...(body.unitCost !== undefined && { unitCost: parseFloat(body.unitCost) }),
-        ...(body.name !== undefined && { name: body.name }),
-      },
+    const item = await prisma.inventoryItem.findUnique({ 
+      where: { id, organizationId: orgId }
     });
-    return NextResponse.json(updated);
-  } catch (err: any) { return NextResponse.json({ error: err.message }, { status: 500 }); }
+    if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json(item);
+  } catch (err: any) {
+    if (err.message && err.message.includes("NEXT_REDIRECT")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    return handleApiError(err);
+  }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const { id } = await params;
-    const orgId = await getCurrentOrgId();
-    const existing = await prisma.inventoryItem.findFirst({ where: { id: id, organizationId: orgId } });
-    if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    await prisma.inventoryItem.delete({ where: { id: id } });
-    return NextResponse.json({ ok: true });
-  } catch (err: any) { return NextResponse.json({ error: err.message }, { status: 500 }); }
-}
+export const PATCH = withPermission("inventory", "edit", async (req: NextRequest, { params }: any, orgId: string) => {
+  const { id } = await params;
+  const existing = await prisma.inventoryItem.findUnique({ where: { id, organizationId: orgId } });
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  const body = await req.json();
+  const data = inventorySchema.partial().parse(body);
 
+  if (data.plantId) {
+    const plant = await prisma.plant.findUnique({ where: { id: data.plantId, organizationId: orgId } });
+    if (!plant) return NextResponse.json({ error: "Invalid plant" }, { status: 400 });
+  }
 
+  const item = await prisma.inventoryItem.update({
+    where: { id },
+    data,
+  });
+  return NextResponse.json(item);
+});
 
+export const DELETE = withPermission("inventory", "delete", async (req: NextRequest, { params }: any, orgId: string) => {
+  const { id } = await params;
+  const existing = await prisma.inventoryItem.findUnique({ where: { id, organizationId: orgId } });
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  await prisma.inventoryItem.delete({ where: { id } });
+  return NextResponse.json({ ok: true });
+});

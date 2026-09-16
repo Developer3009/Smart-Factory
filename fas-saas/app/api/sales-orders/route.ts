@@ -1,42 +1,46 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentOrgId } from "@/lib/tenant";
-import { salesOrderSchema } from "@/lib/validations";
+import { getAuthContext } from "@/lib/auth";
+import { withPermission } from "@/lib/api-middleware";
+import { salesOrderSchema, paginationSchema } from "@/lib/validations";
+import { handleApiError } from "@/lib/api-errors";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const orgId = await getCurrentOrgId();
-    // SalesOrder doesn't have organizationId directly, filter via customer
+    const { orgId } = await getAuthContext();
+    const { searchParams } = new URL(req.url);
+    const { take, skip } = paginationSchema.parse({
+      take: searchParams.get("take") || undefined,
+      skip: searchParams.get("skip") || undefined,
+    });
+
     const orders = await prisma.salesOrder.findMany({
-      where: { customer: { organizationId: orgId } },
+      where: { organizationId: orgId },
       include: { customer: true },
       orderBy: { createdAt: "desc" },
+      take,
+      skip,
     });
     return NextResponse.json(orders);
-  } catch { return NextResponse.json({ error: "Failed" }, { status: 500 }); }
-}
-
-export async function POST(req: Request) {
-  try {
-    const orgId = await getCurrentOrgId();
-    const body = salesOrderSchema.parse(await req.json());
-
-    const customer = await prisma.customer.findUnique({ where: { id: body.customerId } });
-    if (!customer) return NextResponse.json({ error: "Customer not found." }, { status: 404 });
-    if (!customer.email || !customer.phone) {
-      return NextResponse.json({ error: "Customer email and phone required before creating an order" }, { status: 400 });
-    }
-
-    const order = await prisma.salesOrder.create({
-      data: {
-        customerId: body.customerId,
-        amount: body.amount,
-        status: "PENDING",
-      },
-      include: { customer: true },
-    });
-    return NextResponse.json(order, { status: 201 });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    if (err.message && err.message.includes("NEXT_REDIRECT")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    return handleApiError(err);
   }
 }
+
+export const POST = withPermission("orders", "create", async (req: NextRequest, context: any, orgId: string) => {
+  const body = await req.json();
+  const data = salesOrderSchema.parse(body);
+
+  const order = await prisma.salesOrder.create({
+    data: {
+      organizationId: orgId,
+      customerId: data.customerId,
+      amount: data.amount,
+      status: data.status || "PENDING",
+    },
+  });
+  return NextResponse.json(order, { status: 201 });
+});

@@ -1,53 +1,55 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentOrgId } from "@/lib/tenant";
+import { getAuthContext } from "@/lib/auth";
+import { withPermission } from "@/lib/api-middleware";
+import { inventorySchema, paginationSchema } from "@/lib/validations";
+import { handleApiError } from "@/lib/api-errors";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const orgId = await getCurrentOrgId();
-    const items = await prisma.inventoryItem.findMany({
+    const { orgId } = await getAuthContext();
+    const { searchParams } = new URL(req.url);
+    const { take, skip } = paginationSchema.parse({
+      take: searchParams.get("take") || undefined,
+      skip: searchParams.get("skip") || undefined,
+    });
+
+    const inventory = await prisma.inventoryItem.findMany({
       where: { organizationId: orgId },
-      orderBy: { name: "asc" },
+      orderBy: { createdAt: "desc" },
+      take,
+      skip,
     });
-    return NextResponse.json(items);
-  } catch { return NextResponse.json({ error: "Failed" }, { status: 500 }); }
-}
-
-export async function POST(req: Request) {
-  try {
-    const orgId = await getCurrentOrgId();
-    const body = await req.json();
-
-    const plant = await prisma.plant.findFirst({ where: { organizationId: orgId } });
-
-    const item = await prisma.inventoryItem.create({
-      data: {
-        organizationId: orgId,
-        plantId: plant?.id ?? null,
-        sku: body.sku,
-        name: body.name,
-        type: body.type ?? "RAW_MATERIAL",
-        quantityOnHand: parseFloat(body.quantityOnHand) || 0,
-        reorderPoint: parseFloat(body.reorderPoint) || 0,
-        unit: body.unit ?? "pcs",
-        unitCost: parseFloat(body.unitCost) || 0,
-      },
-    });
-
-    if (item.quantityOnHand > 0) {
-      await prisma.inventoryMovement.create({
-        data: {
-          itemId: item.id,
-          quantity: item.quantityOnHand,
-          type: "RECEIPT",
-          reference: "Initial stock",
-          notes: "Added via UI",
-        },
-      });
-    }
-
-    return NextResponse.json(item, { status: 201 });
+    return NextResponse.json(inventory);
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    if (err.message && err.message.includes("NEXT_REDIRECT")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    return handleApiError(err);
   }
 }
+
+export const POST = withPermission("inventory", "create", async (req: NextRequest, context: any, orgId: string) => {
+  const body = await req.json();
+  const data = inventorySchema.parse(body);
+
+  if (data.plantId) {
+    const plant = await prisma.plant.findUnique({ where: { id: data.plantId, organizationId: orgId } });
+    if (!plant) return NextResponse.json({ error: "Invalid plant" }, { status: 400 });
+  }
+
+  const inventoryItem = await prisma.inventoryItem.create({
+    data: {
+      organizationId: orgId,
+      plantId: data.plantId,
+      sku: data.sku,
+      name: data.name,
+      type: data.type,
+      quantityOnHand: data.quantityOnHand,
+      reorderPoint: data.reorderPoint,
+      unit: data.unit,
+      unitCost: data.unitCost,
+    },
+  });
+  return NextResponse.json(inventoryItem, { status: 201 });
+});

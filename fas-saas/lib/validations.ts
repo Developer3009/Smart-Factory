@@ -1,4 +1,9 @@
-import { z } from 'zod';
+import { z } from "zod";
+
+export const paginationSchema = z.object({
+  take: z.coerce.number().min(1).max(100).default(50),
+  skip: z.coerce.number().min(0).default(0),
+});
 
 export const organizationSchema = z.object({
   name: z.string().min(1, 'Organization name is required').trim(),
@@ -12,10 +17,11 @@ export const customerSchema = z.object({
   address: z.string().optional().nullable(),
 });
 
-export const vendorSchema = z.object({
+export const memberSchema = z.object({
   name: z.string().min(1, 'Name is required').trim(),
-  email: z.string().email('Invalid email').optional().nullable(),
-  phone: z.string().optional().nullable(),
+  clerkUserId: z.string().min(1, 'Clerk User ID is required'),
+  email: z.string().email().optional().nullable(),
+  role: z.enum(['SAAS_ADMIN', 'ORG_ADMIN', 'MEMBER']).optional().default('MEMBER'),
 });
 
 export const rawMaterialSchema = z.object({
@@ -27,75 +33,57 @@ export const rawMaterialSchema = z.object({
   unitCost: z.number().nonnegative().optional().default(0),
 });
 
-export const memberSchema = z.object({
-  name: z.string().min(1, 'Name is required').trim(),
-  clerkUserId: z.string().min(1, 'Clerk User ID is required'),
-  email: z.string().email().optional().nullable(),
-  role: z.enum(['SAAS_ADMIN', 'ORG_ADMIN', 'MEMBER']).optional().default('MEMBER'),
-});
-
 export const productSchema = z.object({
-  name: z.string().min(1, 'Name is required').trim(),
-  sku: z.string().min(1, 'SKU is required').trim(),
-  price: z.number().nonnegative().optional(),
-});
-
-export const machineSchema = z.object({
-  name: z.string().min(1, 'Name is required').trim(),
-  type: z.string().min(1, 'Type is required').trim(),
-  plantId: z.string().min(1, 'Plant ID is required'),
-});
-
-// Used across routes
-export const idParamSchema = z.object({
-  id: z.string().cuid('Invalid ID format'),
-});
-
-export const inventoryMovementSchema = z.object({
-  quantity: z.number(),
-  type: z.enum(["RECEIPT", "CONSUMPTION", "ADJUSTMENT"]),
-  reference: z.string().optional().nullable(),
-  notes: z.string().optional().nullable(),
-});
-
-export const purchaseOrderSchema = z.object({
-  vendorId: z.string().min(1),
-  amount: z.number().nonnegative(),
-  notes: z.string().optional().nullable(),
-  expectedDelivery: z.string().optional().nullable(),
-});
-
-export const workOrderSchema = z.object({
-  productId: z.string().min(1),
-  quantity: z.number().int().positive(),
-  dueDate: z.string().min(1),
-  notes: z.string().optional().nullable(),
-});
-
-export const qcInspectionSchema = z.object({
-  workOrderId: z.string().optional().nullable(),
-  inspectionType: z.string().min(1),
-  sampleSize: z.number().int().positive(),
-  result: z.enum(["PASS", "FAIL", "CONDITIONAL"]).optional().nullable(),
-  defectsFound: z.number().int().nonnegative(),
-  notes: z.string().optional().nullable(),
-});
-
-export const shiftSchema = z.object({
-  name: z.string().min(1),
-  startTime: z.string().min(1),
-  endTime: z.string().min(1),
-});
-
-export const maintenanceTicketSchema = z.object({
-  title: z.string().min(1),
-  machineId: z.string().optional().nullable(),
+  name: z.string().min(1, "Name is required"),
+  sku: z.string().min(1, "SKU is required"),
   description: z.string().optional().nullable(),
-  type: z.string().optional().default("BREAKDOWN"),
-  priority: z.string().optional().default("MEDIUM"),
+  unitPrice: z.number().min(0).default(0),
+  bomItems: z.array(z.object({
+    itemId: z.string(),
+    quantity: z.number().min(0.01),
+    unit: z.string().optional()
+  })).optional()
+});
+
+export const vendorSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email("Valid email required"),
+  phone: z.string().min(5, "Valid phone required")
 });
 
 export const salesOrderSchema = z.object({
-  customerId: z.string().min(1),
-  amount: z.number().nonnegative(),
+  customerId: z.string().min(1, "Customer is required"),
+  amount: z.number().min(0.01, "Amount must be greater than 0"),
+  status: z.string().optional()
+});
+
+export const machineSchema = z.object({
+  plantId: z.string().min(1, "Plant ID is required"),
+  name: z.string().min(1, "Name is required"),
+  description: z.string().optional().nullable(),
+  machineType: z.string().optional(),
+  protocol: z.string().optional(),
+  ipAddress: z.string().optional().nullable()
+});
+
+export const inventorySchema = z.object({
+  plantId: z.string().optional().nullable(),
+  sku: z.string().min(1, "SKU is required"),
+  name: z.string().min(1, "Name is required"),
+  type: z.string().optional(),
+  quantityOnHand: z.number().min(0).default(0),
+  reorderPoint: z.number().min(0).default(0),
+  unit: z.string().default("pcs"),
+  unitCost: z.number().min(0).default(0)
+});
+
+export const workOrderSchema = z.object({
+  plantId: z.string().min(1, "Plant ID is required"),
+  productId: z.string().min(1, "Product ID is required"),
+  shiftId: z.string().optional().nullable(),
+  quantity: z.number().min(1),
+  targetQty: z.number().optional().nullable(),
+  dueDate: z.string().datetime(),
+  estimatedHrs: z.number().optional().nullable(),
+  notes: z.string().optional().nullable()
 });

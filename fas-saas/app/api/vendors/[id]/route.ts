@@ -1,20 +1,47 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthContext } from "@/lib/auth";
-import { ROLES } from "@/lib/roles";
+import { withPermission } from "@/lib/api-middleware";
+import { vendorSchema } from "@/lib/validations";
+import { handleApiError } from "@/lib/api-errors";
 
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { orgId } = await getAuthContext();
     const { id } = await params;
-    const ctx = await getAuthContext();
-    if (ctx.role !== ROLES.ADMIN && ctx.role !== ROLES.SAAS_ADMIN) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-        const vendor = await prisma.vendor.findUnique({ where: { id } });
+    const vendor = await prisma.vendor.findUnique({ 
+      where: { id, organizationId: orgId }
+    });
     if (!vendor) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    if (!ctx.isSaasAdmin && vendor.organizationId !== ctx.orgId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    await prisma.vendor.delete({ where: { id } });
-    return NextResponse.json({ ok: true });
-  } catch (err: any) { return NextResponse.json({ error: err.message }, { status: 500 }); }
+    return NextResponse.json(vendor);
+  } catch (err: any) {
+    if (err.message && err.message.includes("NEXT_REDIRECT")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    return handleApiError(err);
+  }
 }
 
+export const PATCH = withPermission("vendors", "edit", async (req: NextRequest, { params }: any, orgId: string) => {
+  const { id } = await params;
+  const existing = await prisma.vendor.findUnique({ where: { id, organizationId: orgId } });
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  const body = await req.json();
+  const data = vendorSchema.partial().parse(body);
 
+  const vendor = await prisma.vendor.update({
+    where: { id },
+    data,
+  });
+  return NextResponse.json(vendor);
+});
+
+export const DELETE = withPermission("vendors", "delete", async (req: NextRequest, { params }: any, orgId: string) => {
+  const { id } = await params;
+  const existing = await prisma.vendor.findUnique({ where: { id, organizationId: orgId } });
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  await prisma.vendor.delete({ where: { id } });
+  return NextResponse.json({ ok: true });
+});

@@ -10,6 +10,9 @@ const isPublicRoute = createRouteMatcher([
 
 export default clerkMiddleware(async (auth, request) => {
   if (!isPublicRoute(request)) {
+    if (process.env.NODE_ENV === "development" && request.headers.has("x-test-user-id")) {
+      return; // Bypass Clerk protection for automated test runner
+    }
     await auth.protect();
   }
 });

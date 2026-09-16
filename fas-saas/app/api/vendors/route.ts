@@ -1,27 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthContext } from "@/lib/auth";
-import { ROLES } from "@/lib/roles";
+import { withPermission } from "@/lib/api-middleware";
+import { vendorSchema, paginationSchema } from "@/lib/validations";
+import { handleApiError } from "@/lib/api-errors";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const { orgId } = await getAuthContext();
-    const vendors = await prisma.vendor.findMany({ where: { organizationId: orgId }, orderBy: { createdAt: "desc" } });
+    const { searchParams } = new URL(req.url);
+    const { take, skip } = paginationSchema.parse({
+      take: searchParams.get("take") || undefined,
+      skip: searchParams.get("skip") || undefined,
+    });
+
+    const vendors = await prisma.vendor.findMany({
+      where: { organizationId: orgId },
+      orderBy: { createdAt: "desc" },
+      take,
+      skip,
+    });
     return NextResponse.json(vendors);
-  } catch (err: any) { return NextResponse.json({ error: err.message }, { status: 401 }); }
+  } catch (err: any) {
+    if (err.message && err.message.includes("NEXT_REDIRECT")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    return handleApiError(err);
+  }
 }
 
-export async function POST(req: NextRequest) {
-  try {
-    const ctx = await getAuthContext();
-    if (ctx.role !== ROLES.ADMIN && ctx.role !== ROLES.SAAS_ADMIN) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-    const { name, email, phone } = await req.json();
-    if (!name?.trim()) return NextResponse.json({ error: "Name is required" }, { status: 400 });
-    const vendor = await prisma.vendor.create({
-      data: { organizationId: ctx.orgId, name: name.trim(), email: email || null, phone: phone || null },
-    });
-    return NextResponse.json(vendor, { status: 201 });
-  } catch (err: any) { return NextResponse.json({ error: err.message }, { status: 500 }); }
-}
+export const POST = withPermission("vendors", "create", async (req: NextRequest, context: any, orgId: string) => {
+  const body = await req.json();
+  const data = vendorSchema.parse(body);
+
+  const vendor = await prisma.vendor.create({
+    data: {
+      organizationId: orgId,
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+    },
+  });
+  return NextResponse.json(vendor, { status: 201 });
+});

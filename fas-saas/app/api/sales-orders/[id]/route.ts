@@ -1,46 +1,48 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentOrgId } from "@/lib/tenant";
-import { sendSalesOrderEmail } from "@/lib/email";
+import { getAuthContext } from "@/lib/auth";
+import { withPermission } from "@/lib/api-middleware";
+import { salesOrderSchema } from "@/lib/validations";
+import { handleApiError } from "@/lib/api-errors";
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { orgId } = await getAuthContext();
     const { id } = await params;
-    const orgId = await getCurrentOrgId();
-    const body = await req.json();
-
-    // Verify ownership via customer.organizationId
-    const existing = await prisma.salesOrder.findFirst({ 
-      where: { id: id, customer: { organizationId: orgId } },
+    const order = await prisma.salesOrder.findUnique({ 
+      where: { id, organizationId: orgId },
       include: { customer: true }
     });
-    if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-    const updated = await prisma.salesOrder.update({
-      where: { id: id },
-      data: { status: body.status },
-      include: { customer: true },
-    });
-
-    if (body.status === 'CONFIRMED' || body.status === 'DECLINED') {
-      await sendSalesOrderEmail(updated, updated.customer, body.status as any);
+    if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json(order);
+  } catch (err: any) {
+    if (err.message && err.message.includes("NEXT_REDIRECT")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    return NextResponse.json(updated);
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return handleApiError(err);
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const { id } = await params;
-    const orgId = await getCurrentOrgId();
-    const existing = await prisma.salesOrder.findFirst({ where: { id: id, customer: { organizationId: orgId } } });
-    if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    await prisma.salesOrder.delete({ where: { id: id } });
-    return NextResponse.json({ ok: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
-}
+export const PATCH = withPermission("orders", "edit", async (req: NextRequest, { params }: any, orgId: string) => {
+  const { id } = await params;
+  const existing = await prisma.salesOrder.findUnique({ where: { id, organizationId: orgId } });
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const body = await req.json();
+  const data = salesOrderSchema.partial().parse(body);
+
+  const order = await prisma.salesOrder.update({
+    where: { id },
+    data,
+  });
+  return NextResponse.json(order);
+});
+
+export const DELETE = withPermission("orders", "delete", async (req: NextRequest, { params }: any, orgId: string) => {
+  const { id } = await params;
+  const existing = await prisma.salesOrder.findUnique({ where: { id, organizationId: orgId } });
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  await prisma.salesOrder.delete({ where: { id } });
+  return NextResponse.json({ ok: true });
+});
