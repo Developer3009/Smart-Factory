@@ -54,7 +54,7 @@ export const vendorSchema = z.object({
 export const salesOrderSchema = z.object({
   customerId: z.string().min(1, "Customer is required"),
   amount: z.number().min(0.01, "Amount must be greater than 0"),
-  status: z.string().optional()
+  status: z.enum(["PENDING", "CONFIRMED", "IN_PRODUCTION", "DISPATCHED", "DELIVERED", "DECLINED", "CANCELLED"]).optional()
 });
 
 export const machineSchema = z.object({
@@ -87,3 +87,4 @@ export const workOrderSchema = z.object({
   estimatedHrs: z.number().optional().nullable(),
   notes: z.string().optional().nullable()
 });
+
