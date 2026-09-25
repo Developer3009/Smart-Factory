@@ -1,13 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { Download, Plus, Search, Eye, ChevronLeft, ChevronRight } from "lucide-react";
+import { useState, useTransition } from "react";
+import { Download, Plus, Search, Eye, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 const PAGE_SIZE = 10;
 
 export default function MachinesClient({ machines }: { machines: any[] }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [selectedMachine, setSelectedMachine] = useState<any>(null);
 
   const filtered = machines.filter((m) =>
     m.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -99,11 +103,9 @@ export default function MachinesClient({ machines }: { machines: any[] }) {
                     <td>
                       <div style={{ display: "flex", gap: 4 }}>
                         <button className="btn-icon" title="View" onClick={() => setSelectedMachine(m)}><Eye size={15} style={{ color: "#06b6d4" }} /></button>
-                        {role !== ROLES.MEMBER && (
-                          <button className="btn-icon" title="Delete" onClick={async () => { if (!confirm("Delete this machine?")) return; const res = await fetch(`/api/machines/${m.id}`, { method: "DELETE" }); if (res.ok) startTransition(() => router.refresh()); }}>
-                            <Trash2 size={15} style={{ color: "#ef4444" }} />
-                          </button>
-                        )}
+                        <button className="btn-icon" title="Delete" onClick={async () => { if (!confirm("Delete this machine?")) return; const res = await fetch(`/api/machines/${m.id}`, { method: "DELETE" }); if (res.ok) startTransition(() => router.refresh()); }}>
+                          <Trash2 size={15} style={{ color: "#ef4444" }} />
+                        </button>
                       </div>
                     </td>
                   </tr>

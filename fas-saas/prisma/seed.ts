@@ -215,7 +215,7 @@ async function main() {
   console.log(`✅ ${downtimeCodes.length} downtime reason codes seeded`);
 
   // ── Sales Orders (for profit calculation) ──
-  const salesOrderData = [
+  const salesOrderData: any[] = [
     { id: "so-1", customerId: "cust-1", amount: 12500, status: "COMPLETED" },
     { id: "so-2", customerId: "cust-2", amount: 28000, status: "COMPLETED" },
     { id: "so-3", customerId: "cust-1", amount: 8500,  status: "COMPLETED" },

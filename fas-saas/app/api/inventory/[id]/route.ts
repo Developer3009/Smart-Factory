@@ -2,14 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentOrgId } from "@/lib/tenant";
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const orgId = await getCurrentOrgId();
     const body = await req.json();
-    const existing = await prisma.inventoryItem.findFirst({ where: { id: params.id, organizationId: orgId } });
+    const { id } = await params;
+    const existing = await prisma.inventoryItem.findFirst({ where: { id, organizationId: orgId } });
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
     const updated = await prisma.inventoryItem.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...(body.quantityOnHand !== undefined && { quantityOnHand: parseFloat(body.quantityOnHand) }),
         ...(body.reorderPoint !== undefined && { reorderPoint: parseFloat(body.reorderPoint) }),
@@ -21,12 +22,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   } catch (err: any) { return NextResponse.json({ error: err.message }, { status: 500 }); }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const orgId = await getCurrentOrgId();
-    const existing = await prisma.inventoryItem.findFirst({ where: { id: params.id, organizationId: orgId } });
+    const { id } = await params;
+    const existing = await prisma.inventoryItem.findFirst({ where: { id, organizationId: orgId } });
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    await prisma.inventoryItem.delete({ where: { id: params.id } });
+    await prisma.inventoryItem.delete({ where: { id } });
     return NextResponse.json({ ok: true });
   } catch (err: any) { return NextResponse.json({ error: err.message }, { status: 500 }); }
 }
