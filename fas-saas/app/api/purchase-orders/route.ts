@@ -28,8 +28,6 @@ export async function POST(req: Request) {
         vendorId: body.vendorId,
         amount: parseFloat(body.amount),
         status: body.status ?? "PENDING",
-        notes: body.notes ?? null,
-        expectedDelivery: body.expectedDelivery ? new Date(body.expectedDelivery) : null,
       },
       include: { vendor: true },
     });
