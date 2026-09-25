@@ -263,12 +263,14 @@ model Vendor {
 }
 
 model PurchaseOrder {
-  id             String   @id @default(cuid())
-  organizationId String
-  vendorId       String
-  amount         Float
-  status         String   @default("PENDING") // PENDING | APPROVED | RECEIVED | CANCELLED
-  createdAt      DateTime @default(now())
+  id               String    @id @default(cuid())
+  organizationId   String
+  vendorId         String
+  amount           Float
+  status           String    @default("PENDING") // PENDING | APPROVED | RECEIVED | CANCELLED
+  notes            String?
+  expectedDelivery DateTime?
+  createdAt        DateTime  @default(now())
 
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   vendor         Vendor       @relation(fields: [vendorId], references: [id])
