@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { Download, Plus, Search, Eye, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -12,6 +12,13 @@ export default function MachinesClient({ machines }: { machines: any[] }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [selectedMachine, setSelectedMachine] = useState<any>(null);
+
+  // Re-derive selectedMachine from the freshest server data after router.refresh()
+  useEffect(() => {
+    if (!selectedMachine) return;
+    const fresh = machines.find((m) => m.id === selectedMachine.id);
+    if (fresh) setSelectedMachine(fresh);
+  }, [machines]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtered = machines.filter((m) =>
     m.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -147,6 +154,48 @@ export default function MachinesClient({ machines }: { machines: any[] }) {
           </button>
         </div>
       </div>
+
+      {/* Machine Detail Modal */}
+      {selectedMachine && (
+        <div
+          style={{
+            position: "fixed", inset: 0, zIndex: 50,
+            background: "rgba(0,0,0,0.45)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+          onClick={() => setSelectedMachine(null)}
+        >
+          <div
+            className="card"
+            style={{ minWidth: 340, maxWidth: 480, padding: 24, position: "relative" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="btn-icon"
+              style={{ position: "absolute", top: 12, right: 12 }}
+              onClick={() => setSelectedMachine(null)}
+            >
+              ✕
+            </button>
+            <h3 style={{ margin: 0, marginBottom: 16 }}>{selectedMachine.name}</h3>
+            <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
+              <tbody>
+                {([
+                  ["Type", selectedMachine.machineType],
+                  ["Plant", selectedMachine.plant?.name ?? "—"],
+                  ["Status", selectedMachine.status],
+                  ["Description", selectedMachine.description ?? "—"],
+                ] as [string, string][]).map(([label, value]) => (
+                  <tr key={label}>
+                    <td style={{ color: "var(--text-muted)", paddingBottom: 8, paddingRight: 16, whiteSpace: "nowrap" }}>{label}</td>
+                    <td style={{ fontWeight: 500 }}>{value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
